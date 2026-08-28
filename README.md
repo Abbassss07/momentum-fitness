@@ -2,6 +2,8 @@
 
 Momentum is a calm, personal training journal for tracking workouts, body weight, and long-term progress. It uses Next.js for the application, Supabase for authentication and data, and Vercel for hosting.
 
+Live app: [workout-tracker-kappa-seven.vercel.app](https://workout-tracker-kappa-seven.vercel.app)
+
 ## Features
 
 - Log workout weight, sets, reps, and dates by exercise and body part
