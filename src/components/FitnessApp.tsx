@@ -57,6 +57,11 @@ export function FitnessApp({ user }: FitnessAppProps) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [workouts, setWorkouts] = useState<WorkoutLog[]>([]);
   const [weights, setWeights] = useState<BodyWeightLog[]>([]);
+  const [profileUsername, setProfileUsername] = useState(
+    typeof user.user_metadata.username === "string"
+      ? user.user_metadata.username
+      : "momentum_member",
+  );
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -68,7 +73,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [partsResult, exercisesResult, workoutsResult, weightsResult] =
+    const [partsResult, exercisesResult, workoutsResult, weightsResult, profileResult] =
       await Promise.all([
         supabase.from("body_parts").select("*").order("sort_order"),
         supabase.from("exercises").select("*").order("name"),
@@ -82,13 +87,19 @@ export function FitnessApp({ user }: FitnessAppProps) {
           .select("*")
           .eq("user_id", user.id)
           .order("logged_at", { ascending: true }),
+        supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .single(),
       ]);
 
     const firstError =
       partsResult.error ||
       exercisesResult.error ||
       workoutsResult.error ||
-      weightsResult.error;
+      weightsResult.error ||
+      profileResult.error;
 
     if (firstError) setNotice(firstError.message);
     setBodyParts((partsResult.data as BodyPart[]) ?? []);
@@ -105,6 +116,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
         weight_kg: Number(item.weight_kg),
       })),
     );
+    if (profileResult.data?.username) setProfileUsername(profileResult.data.username);
     setLoading(false);
   }, [user.id]);
 
@@ -254,9 +266,9 @@ export function FitnessApp({ user }: FitnessAppProps) {
 
         <div className="sidebar-bottom">
           <div className="user-card">
-            <div className="avatar">{initials(user.email)}</div>
+            <div className="avatar">{initials(profileUsername)}</div>
             <div>
-              <strong>{user.email?.split("@")[0]}</strong>
+              <strong>@{profileUsername}</strong>
               <span>Personal journal</span>
             </div>
           </div>

@@ -362,6 +362,14 @@ button:disabled {
   border-color: #aeb1a9;
 }
 
+.field-hint {
+  margin-top: -2px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 450;
+  line-height: 1.45;
+}
+
 .auth-submit {
   width: 100%;
   min-height: 47px;

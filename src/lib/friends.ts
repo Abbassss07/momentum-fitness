@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 
 export type FriendProfile = {
   id: string;
-  email: string;
+  username: string;
 };
 
 export type FriendshipStatus = "pending" | "accepted" | "declined";
@@ -23,9 +23,9 @@ export type FriendshipLists = {
   declined: Friendship[];
 };
 
-export async function findProfileByEmail(email: string) {
-  const { data, error } = await supabase.rpc("find_profile_by_email", {
-    search_email: email.trim(),
+export async function findProfileByUsername(username: string) {
+  const { data, error } = await supabase.rpc("find_profile_by_username", {
+    search_username: username.trim().toLowerCase(),
   });
   if (error) throw error;
   return ((data ?? []) as FriendProfile[])[0] ?? null;
@@ -46,7 +46,7 @@ export async function fetchFriendshipLists(userId: string): Promise<FriendshipLi
   const profiles = new Map<string, FriendProfile>();
 
   if (profileIds.length) {
-    const result = await supabase.from("profiles").select("id,email").in("id", profileIds);
+    const result = await supabase.from("profiles").select("id,username").in("id", profileIds);
     if (result.error) throw result.error;
     for (const profile of (result.data ?? []) as FriendProfile[]) profiles.set(profile.id, profile);
   }
@@ -55,7 +55,10 @@ export async function fetchFriendshipLists(userId: string): Promise<FriendshipLi
     const profileId = friendship.requester_id === userId
       ? friendship.addressee_id
       : friendship.requester_id;
-    return { friendship, profile: profiles.get(profileId) ?? { id: profileId, email: "Momentum member" } };
+    return {
+      friendship,
+      profile: profiles.get(profileId) ?? { id: profileId, username: "momentum_member" },
+    };
   };
 
   return {

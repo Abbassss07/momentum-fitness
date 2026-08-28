@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 export function AuthScreen() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -18,10 +19,38 @@ export function AuthScreen() {
     setError("");
     setMessage("");
 
-    const result =
-      mode === "signin"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
+    let result;
+
+    if (mode === "signup") {
+      const normalizedUsername = username.trim().toLowerCase();
+      if (!/^[a-z][a-z0-9_]{2,23}$/.test(normalizedUsername)) {
+        setError("Use 3–24 lowercase letters, numbers, or underscores. Start with a letter.");
+        setBusy(false);
+        return;
+      }
+
+      const availability = await supabase.rpc("is_username_available", {
+        candidate: normalizedUsername,
+      });
+      if (availability.error) {
+        setError(availability.error.message);
+        setBusy(false);
+        return;
+      }
+      if (!availability.data) {
+        setError("That username is already taken.");
+        setBusy(false);
+        return;
+      }
+
+      result = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { username: normalizedUsername } },
+      });
+    } else {
+      result = await supabase.auth.signInWithPassword({ email, password });
+    }
 
     if (result.error) {
       setError(result.error.message);
@@ -92,6 +121,28 @@ export function AuthScreen() {
           </div>
 
           <form onSubmit={submit} className="auth-form">
+            {mode === "signup" ? (
+              <label>
+                Username
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value.toLowerCase())}
+                  placeholder="your_username"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  minLength={3}
+                  maxLength={24}
+                  pattern="[a-z][a-z0-9_]{2,23}"
+                  aria-describedby="username-hint"
+                  required
+                />
+                <small id="username-hint" className="field-hint">
+                  3–24 characters. Letters, numbers, and underscores.
+                </small>
+              </label>
+            ) : null}
             <label>
               Email address
               <input

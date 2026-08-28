@@ -6,7 +6,7 @@ import { Check, ChevronRight, Search, UserMinus, UserPlus, Users, X } from "luci
 import {
   fetchFriendshipLists,
   fetchFriendSummary,
-  findProfileByEmail,
+  findProfileByUsername,
   FriendProfile,
   FriendshipLists,
   removeFriendship,
@@ -21,7 +21,7 @@ export function FriendsPage({ user, onNotice }: { user: User; onNotice: (message
   const [lists, setLists] = useState(EMPTY_LISTS);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [result, setResult] = useState<FriendProfile | null>(null);
   const [searched, setSearched] = useState(false);
   const [selected, setSelected] = useState<FriendProfile | null>(null);
@@ -58,7 +58,7 @@ export function FriendsPage({ user, onNotice }: { user: User; onNotice: (message
     setBusyId("search");
     setSearched(false);
     try {
-      setResult(await findProfileByEmail(email));
+      setResult(await findProfileByUsername(username));
       setSearched(true);
     } catch (error) {
       onNotice(error instanceof Error ? error.message : "Search failed");
@@ -94,14 +94,26 @@ export function FriendsPage({ user, onNotice }: { user: User; onNotice: (message
       <div className="friends-manage-grid">
         <section className="journal-section friend-search" aria-labelledby="find-friends-title">
           <div className="section-heading">
-            <div><p className="section-label">Add a friend</p><h2 id="find-friends-title">Find by email</h2></div>
+            <div><p className="section-label">Add a friend</p><h2 id="find-friends-title">Find by username</h2></div>
             <UserPlus size={19} />
           </div>
           <form onSubmit={search} className="friend-search-form">
             <label>
-              <span className="sr-only">Friend&apos;s email address</span>
+              <span className="sr-only">Friend&apos;s username</span>
               <Search size={16} aria-hidden="true" />
-              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="friend@example.com" required autoComplete="off" />
+              <input
+                type="text"
+                value={username}
+                onChange={(event) => setUsername(event.target.value.toLowerCase())}
+                placeholder="friend_username"
+                minLength={3}
+                maxLength={24}
+                pattern="[a-z][a-z0-9_]{2,23}"
+                autoCapitalize="none"
+                spellCheck={false}
+                required
+                autoComplete="off"
+              />
             </label>
             <button className="primary-button" disabled={busyId === "search"}>{busyId === "search" ? "Searching…" : "Search"}</button>
           </form>
@@ -112,7 +124,7 @@ export function FriendsPage({ user, onNotice }: { user: User; onNotice: (message
                 <button className="secondary-button" disabled={Boolean(busyId)} onClick={() => act(result.id, () => sendFriendRequest(user.id, result.id, lists.declined), "Friend request sent")}>Send request</button>
               )}
             </div>
-          ) : searched ? <p className="friend-empty">No Momentum account matches that email.</p> : <p className="friend-hint">Enter the exact email they use to sign in.</p>}
+          ) : searched ? <p className="friend-empty">No Momentum account matches that username.</p> : <p className="friend-hint">Enter their exact Momentum username.</p>}
         </section>
 
         <section className="journal-section requests-section" aria-labelledby="requests-title">
@@ -135,19 +147,19 @@ export function FriendsPage({ user, onNotice }: { user: User; onNotice: (message
 
       <section className="journal-section friends-list-section" aria-labelledby="friends-list-title">
         <div className="section-heading"><div><p className="section-label">Connected</p><h2 id="friends-list-title">Your friends</h2></div><span className="friends-total">{lists.friends.length} {lists.friends.length === 1 ? "friend" : "friends"}</span></div>
-        {!loading && !lists.friends.length ? <div className="friends-zero"><Users size={20} /><strong>Your circle is quiet for now.</strong><p>Search by email above to add your first friend.</p></div> : null}
+        {!loading && !lists.friends.length ? <div className="friends-zero"><Users size={20} /><strong>Your circle is quiet for now.</strong><p>Search by username above to add your first friend.</p></div> : null}
         <div className="friends-list">
           {lists.friends.map(({ friendship, profile }) => (
             <div className="friend-list-row" key={friendship.id}>
               <a href={`#friend-${profile.id}`} onClick={(event) => { event.preventDefault(); void openFriend(profile); }}><FriendIdentity profile={profile} /><ChevronRight size={17} /></a>
-              <button className="icon-text-button" disabled={busyId === friendship.id} onClick={() => { if (window.confirm(`Remove ${profile.email} from your friends?`)) void act(friendship.id, () => removeFriendship(friendship.id), "Friend removed"); }}><UserMinus size={15} /> Unfriend</button>
+              <button className="icon-text-button" disabled={busyId === friendship.id} onClick={() => { if (window.confirm(`Remove @${profile.username} from your friends?`)) void act(friendship.id, () => removeFriendship(friendship.id), "Friend removed"); }}><UserMinus size={15} /> Unfriend</button>
             </div>
           ))}
         </div>
       </section>
 
       {selected ? <section id={`friend-${selected.id}`} className="journal-section friend-summary" aria-labelledby="friend-summary-title">
-        <div className="section-heading"><div><p className="section-label">Read-only preview</p><h2 id="friend-summary-title">{selected.email.split("@")[0]}&apos;s progress</h2></div><button className="icon-button" onClick={() => setSelected(null)} aria-label="Close friend summary"><X size={17} /></button></div>
+        <div className="section-heading"><div><p className="section-label">Read-only preview</p><h2 id="friend-summary-title">@{selected.username}&apos;s progress</h2></div><button className="icon-button" onClick={() => setSelected(null)} aria-label="Close friend summary"><X size={17} /></button></div>
         {!summary ? <p className="friend-empty">Loading their summary…</p> : <dl><div><dt>Workout entries</dt><dd>{summary.workoutCount}</dd></div><div><dt>Latest body weight</dt><dd>{summary.latestWeight ? `${summary.latestWeight.weight_kg} kg` : "No entries"}</dd>{summary.latestWeight ? <small>{formatDate(summary.latestWeight.logged_at)}</small> : null}</div></dl>}
         <p className="friend-summary-note">Full shared progress is coming in the next phase. Their data is read-only.</p>
       </section> : null}
@@ -156,5 +168,5 @@ export function FriendsPage({ user, onNotice }: { user: User; onNotice: (message
 }
 
 function FriendIdentity({ profile }: { profile: FriendProfile }) {
-  return <span className="friend-identity"><span className="friend-avatar">{initials(profile.email)}</span><span><strong>{profile.email.split("@")[0]}</strong><small>{profile.email}</small></span></span>;
+  return <span className="friend-identity"><span className="friend-avatar">{initials(profile.username)}</span><span><strong>@{profile.username}</strong><small>Momentum member</small></span></span>;
 }
