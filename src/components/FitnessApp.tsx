@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Brand } from "@/components/AuthScreen";
 import { ProgressChart } from "@/components/ProgressChart";
+import { FriendsPage } from "@/components/FriendsPage";
 import {
   BodyPart,
   BodyWeightLog,
@@ -74,10 +75,12 @@ export function FitnessApp({ user }: FitnessAppProps) {
         supabase
           .from("workout_logs")
           .select("*")
+          .eq("user_id", user.id)
           .order("logged_at", { ascending: false }),
         supabase
           .from("body_weight_logs")
           .select("*")
+          .eq("user_id", user.id)
           .order("logged_at", { ascending: true }),
       ]);
 
@@ -103,7 +106,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
       })),
     );
     setLoading(false);
-  }, []);
+  }, [user.id]);
 
   useEffect(() => {
     loadData();
@@ -245,7 +248,6 @@ export function FitnessApp({ user }: FitnessAppProps) {
             active={section === "friends"}
             icon={<Users size={18} />}
             label="Friends"
-            meta="Preview"
             onClick={() => navigate("friends")}
           />
         </nav>
@@ -330,7 +332,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
               onCustom={() => setCustomModal(true)}
             />
           ) : (
-            <FriendsPage workouts={workouts} />
+            <FriendsPage user={user} onNotice={setNotice} />
           )}
         </div>
       </section>
@@ -730,43 +732,6 @@ function LeaderboardPreview({ currentSessions }: { currentSessions: number }) {
         Ranked by training days. Week begins Monday. Friend data is illustrative.
       </p>
     </aside>
-  );
-}
-
-function FriendsPage({ workouts }: { workouts: WorkoutLog[] }) {
-  const monday = getMondayStartIso();
-  const sessions = new Set(
-    workouts.filter((item) => item.logged_at >= monday).map((item) => item.logged_at),
-  ).size;
-
-  return (
-    <>
-      <header className="page-header">
-        <div>
-          <p className="section-label">Friends and groups</p>
-          <h1>Train alongside your people.</h1>
-          <p>A quiet preview of shared consistency, without the noise.</p>
-        </div>
-      </header>
-      <div className="friends-layout">
-        <section className="journal-section friends-intro">
-          <span className="friends-icon"><Users size={21} /></span>
-          <p className="section-label">Coming later</p>
-          <h2>A shared training circle</h2>
-          <p>
-            Friends and private groups will live here when the social layer is
-            connected. Your personal records remain private unless you choose
-            to share them.
-          </p>
-          <ul>
-            <li><Check size={15} /> Weekly consistency</li>
-            <li><Check size={15} /> Private training groups</li>
-            <li><Check size={15} /> Control over what you share</li>
-          </ul>
-        </section>
-        <LeaderboardPreview currentSessions={sessions} />
-      </div>
-    </>
   );
 }
 
