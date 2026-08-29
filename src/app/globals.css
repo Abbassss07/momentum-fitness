@@ -2040,8 +2040,7 @@ button:disabled {
 .modal-backdrop {
   padding: 20px;
   position: fixed;
-  inset: 0;
-  min-height: 100dvh;
+  inset: 0 0 var(--keyboard-inset, 0px);
   z-index: 100;
   display: grid;
   place-items: center;
@@ -2052,7 +2051,7 @@ button:disabled {
 
 .modal {
   width: min(500px, 100%);
-  max-height: calc(100dvh - 40px);
+  max-height: 100%;
   padding: 25px;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -2690,7 +2689,7 @@ button:disabled {
   }
 
   .modal {
-    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+    max-height: 100%;
     padding: 18px 17px 0;
     border-radius: var(--radius) var(--radius) 0 0;
   }

@@ -1154,6 +1154,33 @@ function ModalFrame({
     };
   }, [onClose]);
 
+  useEffect(() => {
+    const rootStyle = document.documentElement.style;
+    const previousKeyboardInset = rootStyle.getPropertyValue("--keyboard-inset");
+
+    function updateKeyboardInset() {
+      const viewport = window.visualViewport;
+      const keyboardInset = viewport
+        ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+        : 0;
+      rootStyle.setProperty("--keyboard-inset", `${keyboardInset}px`);
+    }
+
+    updateKeyboardInset();
+    window.visualViewport?.addEventListener("resize", updateKeyboardInset);
+    window.visualViewport?.addEventListener("scroll", updateKeyboardInset);
+
+    return () => {
+      if (previousKeyboardInset) {
+        rootStyle.setProperty("--keyboard-inset", previousKeyboardInset);
+      } else {
+        rootStyle.removeProperty("--keyboard-inset");
+      }
+      window.visualViewport?.removeEventListener("resize", updateKeyboardInset);
+      window.visualViewport?.removeEventListener("scroll", updateKeyboardInset);
+    };
+  }, []);
+
   return (
     <div
       className="modal-backdrop"
