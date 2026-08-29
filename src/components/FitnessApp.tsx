@@ -33,6 +33,7 @@ import { ProgressChart, RangeSelect } from "@/components/ProgressChart";
 import { FriendsPage } from "@/components/FriendsPage";
 import { LeaderboardPage } from "@/components/LeaderboardPage";
 import { ProfileSettings } from "@/components/ProfileSettings";
+import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
 import {
   BodyPart,
   BodyWeightLog,
@@ -1166,6 +1167,7 @@ function ModalFrame({
         aria-modal="true"
         aria-labelledby="modal-title"
         aria-describedby="modal-description"
+        onFocusCapture={scrollFocusedFieldIntoView}
       >
         <div className="modal-head">
           <div>

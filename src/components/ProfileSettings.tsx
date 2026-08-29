@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Check, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
 
 const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,23}$/;
 
@@ -114,7 +115,11 @@ export function ProfileSettings({
           </div>
         </div>
 
-        <form className="profile-form" onSubmit={saveProfile}>
+        <form
+          className="profile-form"
+          onSubmit={saveProfile}
+          onFocusCapture={scrollFocusedFieldIntoView}
+        >
           <label>
             Display name
             <input
