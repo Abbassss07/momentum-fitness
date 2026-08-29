@@ -328,14 +328,16 @@ export function FitnessApp({ user }: FitnessAppProps) {
             <span>{sectionTitle}</span>
             <small>Momentum</small>
           </div>
-          <button
-            type="button"
-            className="primary-button topbar-action"
-            onClick={() => beginWorkout()}
-          >
-            <Plus size={17} />
-            <span>Log workout</span>
-          </button>
+          {section !== "friends" ? (
+            <button
+              type="button"
+              className="primary-button topbar-action"
+              onClick={() => beginWorkout()}
+            >
+              <Plus size={17} />
+              <span>Log workout</span>
+            </button>
+          ) : null}
         </header>
 
         <div className="content-wrap">
@@ -1446,4 +1448,5 @@ function getRecentExerciseProgress(workouts: WorkoutLog[]) {
     })
     .toSorted((a, b) => b.latestDate.localeCompare(a.latestDate));
 }
+
 
