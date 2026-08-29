@@ -113,7 +113,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
     setWorkouts(
       ((workoutsResult.data as WorkoutLog[]) ?? []).map((item) => ({
         ...item,
-        weight_kg: Number(item.weight_kg),
+        weight_kg: item.weight_kg === null ? null : Number(item.weight_kg),
       })),
     );
     setWeights(
@@ -171,7 +171,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
 
   async function saveWorkout(values: {
     date: string;
-    weight: number;
+    weight: number | null;
     sets: number;
     reps: number;
     notes: string;
@@ -199,13 +199,18 @@ export function FitnessApp({ user }: FitnessAppProps) {
     await loadData();
   }
 
-  async function addExercise(bodyPartId: string, name: string) {
+  async function addExercise(
+    bodyPartId: string,
+    name: string,
+    isBodyweight: boolean,
+  ) {
     const { data, error } = await supabase
       .from("exercises")
       .insert({
         body_part_id: bodyPartId,
         name,
         user_id: user.id,
+        is_bodyweight: isBodyweight,
       })
       .select()
       .single();
@@ -538,8 +543,10 @@ function Dashboard({
     latestWeight !== undefined && firstVisibleWeight !== undefined
       ? latestWeight - firstVisibleWeight
       : null;
-  const { start: monday } = getCalendarWeekBounds();
-  const weeklyWorkouts = workouts.filter((item) => item.logged_at >= monday);
+  const { start: monday, end: sunday } = getCalendarWeekBounds();
+  const weeklyWorkouts = workouts.filter(
+    (item) => item.logged_at >= monday && item.logged_at <= sunday,
+  );
   const weeklySessions = new Set(weeklyWorkouts.map((item) => item.logged_at)).size;
   const weeklyVolume = totalTrainingVolume(weeklyWorkouts);
   const exerciseById = new Map(exercises.map((item) => [item.id, item]));
@@ -662,8 +669,7 @@ function Dashboard({
                     <small>{log.sets} sets Ã— {log.reps} reps</small>
                   </span>
                   <span className="activity-weight">
-                    {log.weight_kg}
-                    <small> kg</small>
+                    {formatWorkoutLoad(log.weight_kg)}
                   </span>
                   <ChevronRight size={16} aria-hidden="true" />
                 </button>
@@ -700,7 +706,7 @@ function Dashboard({
                   <strong>{exerciseById.get(log.exercise_id)?.name ?? "Exercise"}</strong>
                   <small>{formatDate(log.logged_at)}</small>
                 </span>
-                <b>{log.weight_kg} kg</b>
+                <b>{formatWorkoutLoad(log.weight_kg)}</b>
               </button>
             ))}
             {!recentPrs.length ? (
@@ -856,6 +862,7 @@ function ExercisesPage({
   const dailyBest = new Map<string, number>();
 
   for (const log of exerciseLogs) {
+    if (log.weight_kg === null) continue;
     dailyBest.set(
       log.logged_at,
       Math.max(dailyBest.get(log.logged_at) ?? 0, log.weight_kg),
@@ -867,8 +874,11 @@ function ExercisesPage({
     value,
   }));
   const visible = filterPoints(points, range);
-  const personalBest = exerciseLogs.length
-    ? Math.max(...exerciseLogs.map((item) => item.weight_kg))
+  const recordedLoads = exerciseLogs
+    .map((item) => item.weight_kg)
+    .filter((load): load is number => load !== null);
+  const personalBest = recordedLoads.length
+    ? Math.max(...recordedLoads)
     : null;
   const last = exerciseLogs.at(-1);
 
@@ -1006,7 +1016,7 @@ function ExercisesPage({
                   {exerciseLogs.toReversed().map((log) => (
                     <div className="history-row" key={log.id}>
                       <span>{formatDate(log.logged_at)}</span>
-                      <strong>{log.weight_kg} kg</strong>
+                      <strong>{formatWorkoutLoad(log.weight_kg)}</strong>
                       <span>{log.sets} Ã— {log.reps}</span>
                       <span className="row-actions">
                         <button type="button" onClick={() => onEdit(log)} aria-label="Edit entry">
@@ -1233,14 +1243,18 @@ function WorkoutModal({
   onClose: () => void;
   onSave: (values: {
     date: string;
-    weight: number;
+    weight: number | null;
     sets: number;
     reps: number;
     notes: string;
   }) => Promise<void>;
 }) {
   const [date, setDate] = useState(existing?.logged_at ?? todayIso());
-  const [weight, setWeight] = useState(existing ? String(existing.weight_kg) : "");
+  const [weight, setWeight] = useState(
+    existing?.weight_kg === null || existing?.weight_kg === undefined
+      ? ""
+      : String(existing.weight_kg),
+  );
   const [sets, setSets] = useState(existing ? String(existing.sets) : "3");
   const [reps, setReps] = useState(existing ? String(existing.reps) : "8");
   const [notes, setNotes] = useState(existing?.notes ?? "");
@@ -1249,12 +1263,17 @@ function WorkoutModal({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const parsedWeight = weight.trim() === "" ? null : Number(weight);
+    if (!exercise?.is_bodyweight && parsedWeight === null) {
+      setError("Weight is required for this exercise.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       await onSave({
         date,
-        weight: Number(weight),
+        weight: parsedWeight,
         sets: Number(sets),
         reps: Number(reps),
         notes,
@@ -1299,7 +1318,7 @@ function WorkoutModal({
         </label>
         <div className="form-grid three">
           <label>
-            Weight (kg)
+            {exercise.is_bodyweight ? "Added weight (kg)" : "Weight (kg)"}
             <input
               type="number"
               value={weight}
@@ -1309,10 +1328,13 @@ function WorkoutModal({
               step="0.25"
               inputMode="decimal"
               enterKeyHint="next"
-              placeholder="80"
+              placeholder={exercise.is_bodyweight ? "Optional" : "80"}
               autoFocus
-              required
+              required={!exercise.is_bodyweight}
             />
+            {exercise.is_bodyweight ? (
+              <span className="field-hint">Leave blank for bodyweight only.</span>
+            ) : null}
           </label>
           <label>
             Sets
@@ -1370,10 +1392,15 @@ function CustomExerciseModal({
 }: {
   bodyParts: BodyPart[];
   onClose: () => void;
-  onSave: (bodyPartId: string, name: string) => Promise<void>;
+  onSave: (
+    bodyPartId: string,
+    name: string,
+    isBodyweight: boolean,
+  ) => Promise<void>;
 }) {
   const [part, setPart] = useState(bodyParts[0]?.id ?? "");
   const [name, setName] = useState("");
+  const [isBodyweight, setIsBodyweight] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -1382,7 +1409,7 @@ function CustomExerciseModal({
     setBusy(true);
     setError("");
     try {
-      await onSave(part, name.trim());
+      await onSave(part, name.trim(), isBodyweight);
       onClose();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not add exercise");
@@ -1418,6 +1445,17 @@ function CustomExerciseModal({
             ))}
           </select>
         </label>
+        <label className="checkbox-field">
+          <input
+            type="checkbox"
+            checked={isBodyweight}
+            onChange={(event) => setIsBodyweight(event.target.checked)}
+          />
+          <span>
+            Bodyweight exercise
+            <small>Weight will be optional when logging this movement.</small>
+          </span>
+        </label>
         {error ? <div className="form-error" role="alert">{error}</div> : null}
         <div className="modal-actions">
           <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
@@ -1438,6 +1476,7 @@ function getRecentPrs(workouts: WorkoutLog[]) {
   );
 
   for (const log of chronological) {
+    if (log.weight_kg === null) continue;
     const previousBest = bestByExercise.get(log.exercise_id);
     if (previousBest === undefined || log.weight_kg > previousBest) {
       prs.push(log);
@@ -1462,14 +1501,18 @@ function getRecentExerciseProgress(workouts: WorkoutLog[]) {
       return {
         exerciseId,
         entries: logs.length,
-        best: Math.max(...logs.map((log) => log.weight_kg)),
+        best: Math.max(...logs.map((log) => log.weight_kg ?? 0)),
         latestDate: ordered.at(-1)?.logged_at ?? "",
         points: ordered.map((log) => ({
           date: log.logged_at,
-          value: log.weight_kg,
+          value: log.weight_kg ?? 0,
         })),
       };
     })
     .toSorted((a, b) => b.latestDate.localeCompare(a.latestDate));
+}
+
+function formatWorkoutLoad(weight: number | null) {
+  return weight === null ? "Bodyweight" : `${weight} kg`;
 }
 

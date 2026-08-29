@@ -8,6 +8,7 @@ import {
 } from "@/lib/leaderboard";
 
 type LeaderboardView = "volume" | "consistency" | "weight";
+type ConsistencyRange = "week" | "month";
 
 const VIEW_DETAILS: Record<
   LeaderboardView,
@@ -16,13 +17,13 @@ const VIEW_DETAILS: Record<
   volume: {
     label: "Weekly volume",
     title: "Weekly training volume",
-    description: "Total kilograms lifted from Monday through Sunday.",
+    description: "One recorded load per exercise per day, Monday through Sunday.",
     icon: Dumbbell,
   },
   consistency: {
     label: "Consistency",
-    title: "Weekly consistency",
-    description: "Workout entries logged from Monday through Sunday.",
+    title: "Training consistency",
+    description: "Distinct calendar days with at least one logged workout.",
     icon: BarChart3,
   },
   weight: {
@@ -35,6 +36,8 @@ const VIEW_DETAILS: Record<
 
 export function LeaderboardPage({ userId }: { userId: string }) {
   const [view, setView] = useState<LeaderboardView>("volume");
+  const [consistencyRange, setConsistencyRange] =
+    useState<ConsistencyRange>("week");
   const [data, setData] = useState<LeaderboardData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -69,8 +72,11 @@ export function LeaderboardPage({ userId }: { userId: string }) {
     };
   }, [reloadKey, userId]);
 
-  const rows = useMemo(() => rankEntries(data?.entries ?? [], view), [data, view]);
-  const hasData = rows.some((row) => hasScore(row, view));
+  const rows = useMemo(
+    () => rankEntries(data?.entries ?? [], view, consistencyRange),
+    [consistencyRange, data, view],
+  );
+  const hasData = rows.some((row) => hasScore(row, view, consistencyRange));
   const details = VIEW_DETAILS[view];
   const ViewIcon = details.icon;
 
@@ -116,6 +122,26 @@ export function LeaderboardPage({ userId }: { userId: string }) {
           </div>
         </div>
 
+        {view === "consistency" ? (
+          <div
+            className="consistency-range-toggle"
+            role="group"
+            aria-label="Consistency period"
+          >
+            {(["week", "month"] as ConsistencyRange[]).map((range) => (
+              <button
+                type="button"
+                key={range}
+                className={consistencyRange === range ? "active" : ""}
+                aria-pressed={consistencyRange === range}
+                onClick={() => setConsistencyRange(range)}
+              >
+                {range === "week" ? "This week" : "This month"}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         {loading ? <LeaderboardSkeleton /> : null}
 
         {!loading && error ? (
@@ -139,8 +165,8 @@ export function LeaderboardPage({ userId }: { userId: string }) {
         {!loading && !error && !hasData ? (
           <div className="leaderboard-empty">
             <Trophy size={22} aria-hidden="true" />
-            <strong>{emptyTitle(view)}</strong>
-            <p>{emptyDescription(view)}</p>
+            <strong>{emptyTitle(view, consistencyRange)}</strong>
+            <p>{emptyDescription(view, consistencyRange)}</p>
           </div>
         ) : null}
 
@@ -161,7 +187,9 @@ export function LeaderboardPage({ userId }: { userId: string }) {
                   <strong>{row.displayName}</strong>
                   <small>{row.isCurrentUser ? "You" : "Friend"}</small>
                 </span>
-                <span className="leaderboard-score">{formatScore(row, view)}</span>
+                <span className="leaderboard-score">
+                  {formatScore(row, view, consistencyRange)}
+                </span>
               </li>
             ))}
           </ol>
@@ -171,45 +199,82 @@ export function LeaderboardPage({ userId }: { userId: string }) {
   );
 }
 
-function rankEntries(entries: LeaderboardEntry[], view: LeaderboardView) {
-  return entries.toSorted((a, b) => scoreFor(b, view) - scoreFor(a, view));
+function rankEntries(
+  entries: LeaderboardEntry[],
+  view: LeaderboardView,
+  consistencyRange: ConsistencyRange,
+) {
+  return entries.toSorted(
+    (a, b) =>
+      scoreFor(b, view, consistencyRange) -
+      scoreFor(a, view, consistencyRange),
+  );
 }
 
-function scoreFor(entry: LeaderboardEntry, view: LeaderboardView) {
+function scoreFor(
+  entry: LeaderboardEntry,
+  view: LeaderboardView,
+  consistencyRange: ConsistencyRange,
+) {
   if (view === "volume") return entry.weeklyVolume;
-  if (view === "consistency") return entry.weeklyWorkoutCount;
+  if (view === "consistency") {
+    return consistencyRange === "week"
+      ? entry.weeklyTrainingDays
+      : entry.monthlyTrainingDays;
+  }
   return entry.monthlyWeightChange === null
     ? Number.NEGATIVE_INFINITY
     : Math.abs(entry.monthlyWeightChange);
 }
 
-function hasScore(entry: LeaderboardEntry, view: LeaderboardView) {
+function hasScore(
+  entry: LeaderboardEntry,
+  view: LeaderboardView,
+  consistencyRange: ConsistencyRange,
+) {
   if (view === "volume") return entry.weeklyVolume > 0;
-  if (view === "consistency") return entry.weeklyWorkoutCount > 0;
+  if (view === "consistency") {
+    return scoreFor(entry, view, consistencyRange) > 0;
+  }
   return entry.monthlyWeightChange !== null;
 }
 
-function formatScore(entry: LeaderboardEntry, view: LeaderboardView) {
+function formatScore(
+  entry: LeaderboardEntry,
+  view: LeaderboardView,
+  consistencyRange: ConsistencyRange,
+) {
   if (view === "volume") {
     return entry.weeklyVolume > 0 ? formatVolume(entry.weeklyVolume) : "0 kg";
   }
   if (view === "consistency") {
-    const count = entry.weeklyWorkoutCount;
-    return `${count} ${count === 1 ? "entry" : "entries"}`;
+    const count = scoreFor(entry, view, consistencyRange);
+    return `${count} ${count === 1 ? "day" : "days"}`;
   }
   if (entry.monthlyWeightChange === null) return "—";
   const change = Math.abs(entry.monthlyWeightChange) < 0.05 ? 0 : entry.monthlyWeightChange;
   return `${change > 0 ? "+" : ""}${change.toFixed(1)} kg`;
 }
 
-function emptyTitle(view: LeaderboardView) {
-  return view === "weight" ? "No monthly comparison yet" : "No workouts this week";
+function emptyTitle(view: LeaderboardView, consistencyRange: ConsistencyRange) {
+  if (view === "weight") return "No monthly comparison yet";
+  if (view === "consistency" && consistencyRange === "month") {
+    return "No workouts this month";
+  }
+  return "No workouts this week";
 }
 
-function emptyDescription(view: LeaderboardView) {
-  return view === "weight"
-    ? "Two body-weight logs in the current month are needed to calculate a change."
-    : "The leaderboard will fill in when someone logs a workout this week.";
+function emptyDescription(
+  view: LeaderboardView,
+  consistencyRange: ConsistencyRange,
+) {
+  if (view === "weight") {
+    return "Two body-weight logs in the current month are needed to calculate a change.";
+  }
+  if (view === "consistency" && consistencyRange === "month") {
+    return "The leaderboard will fill in when someone logs a workout this month.";
+  }
+  return "The leaderboard will fill in when someone logs a workout this week.";
 }
 
 function LeaderboardSkeleton() {

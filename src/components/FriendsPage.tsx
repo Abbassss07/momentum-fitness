@@ -214,7 +214,7 @@ function FriendProgressView({ selection, progress, loading, error, exercises, bu
             <div className="section-heading"><div><p className="section-label">Workout history</p><h2 id="friend-history-title">Recent workouts</h2></div><Dumbbell size={18} aria-hidden="true" /></div>
             <div className="history-table friend-history-table">
               <div className="history-head" aria-hidden="true"><span>Date</span><span>Exercise</span><span>Weight</span><span>Sets × reps</span><span>Notes</span></div>
-              {workouts.slice(0, 12).map((workout) => <div className="history-row" key={workout.id}><span>{formatDate(workout.logged_at)}</span><strong>{exerciseById.get(workout.exercise_id) ?? "Custom exercise"}</strong><span>{workout.weight_kg} kg</span><span>{workout.sets} × {workout.reps}</span><span className="friend-workout-notes">{workout.notes || "—"}</span></div>)}
+              {workouts.slice(0, 12).map((workout) => <div className="history-row" key={workout.id}><span>{formatDate(workout.logged_at)}</span><strong>{exerciseById.get(workout.exercise_id) ?? "Custom exercise"}</strong><span>{workout.weight_kg === null ? "Bodyweight" : `${workout.weight_kg} kg`}</span><span>{workout.sets} × {workout.reps}</span><span className="friend-workout-notes">{workout.notes || "—"}</span></div>)}
               {!workouts.length ? <p className="history-empty">No workouts have been logged yet.</p> : null}
             </div>
           </section>

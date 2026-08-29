@@ -1,8 +1,9 @@
 import { fetchAcceptedFriends } from "@/lib/friends";
 import {
+  distinctTrainingDays,
   getCalendarMonthBounds,
   getCalendarWeekBounds,
-  trainingVolume,
+  totalTrainingVolume,
 } from "@/lib/fitness";
 import { supabase } from "@/lib/supabase";
 
@@ -12,11 +13,11 @@ type ProfileRecord = {
   display_name: string | null;
 };
 
-type WeeklyWorkoutRecord = {
+type WorkoutRecord = {
   user_id: string;
-  weight_kg: number;
-  sets: number;
-  reps: number;
+  exercise_id: string;
+  logged_at: string;
+  weight_kg: number | null;
 };
 
 type MonthlyWeightRecord = {
@@ -30,7 +31,8 @@ export type LeaderboardEntry = {
   displayName: string;
   isCurrentUser: boolean;
   weeklyVolume: number;
-  weeklyWorkoutCount: number;
+  weeklyTrainingDays: number;
+  monthlyTrainingDays: number;
   monthlyWeightChange: number | null;
 };
 
@@ -44,6 +46,8 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
   const participantIds = [userId, ...friends.map((friend) => friend.id)];
   const week = getCalendarWeekBounds();
   const month = getCalendarMonthBounds();
+  const workoutStart = week.start < month.start ? week.start : month.start;
+  const workoutEnd = week.end > month.end ? week.end : month.end;
 
   const [profilesResult, workoutsResult, weightsResult] = await Promise.all([
     supabase
@@ -52,10 +56,10 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
       .in("id", participantIds),
     supabase
       .from("workout_logs")
-      .select("user_id,weight_kg,sets,reps")
+      .select("user_id,exercise_id,logged_at,weight_kg")
       .in("user_id", participantIds)
-      .gte("logged_at", week.start)
-      .lte("logged_at", week.end),
+      .gte("logged_at", workoutStart)
+      .lte("logged_at", workoutEnd),
     supabase
       .from("body_weight_logs")
       .select("user_id,logged_at,weight_kg")
@@ -79,19 +83,15 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
   if (friends.some((friend) => !names.get(friend.id))) {
     throw new Error("Could not load an accepted friend's profile.");
   }
-  const weeklyVolumeByUser = new Map<string, number>();
-  const weeklyCountByUser = new Map<string, number>();
-
-  for (const workout of (workoutsResult.data ?? []) as WeeklyWorkoutRecord[]) {
-    weeklyVolumeByUser.set(
-      workout.user_id,
-      (weeklyVolumeByUser.get(workout.user_id) ?? 0) + trainingVolume(workout),
-    );
-    // Replace this raw count with progress toward each user's weekly goal when goals exist.
-    weeklyCountByUser.set(
-      workout.user_id,
-      (weeklyCountByUser.get(workout.user_id) ?? 0) + 1,
-    );
+  const workoutsByUser = new Map<string, WorkoutRecord[]>();
+  for (const workout of (workoutsResult.data ?? []) as WorkoutRecord[]) {
+    const existing = workoutsByUser.get(workout.user_id) ?? [];
+    existing.push({
+      ...workout,
+      weight_kg:
+        workout.weight_kg === null ? null : Number(workout.weight_kg),
+    });
+    workoutsByUser.set(workout.user_id, existing);
   }
 
   const monthlyWeightsByUser = new Map<string, MonthlyWeightRecord[]>();
@@ -104,6 +104,13 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
   return {
     friendCount: friends.length,
     entries: participantIds.map((participantId) => {
+      const participantWorkouts = workoutsByUser.get(participantId) ?? [];
+      const weeklyWorkouts = participantWorkouts.filter(
+        (workout) => workout.logged_at >= week.start && workout.logged_at <= week.end,
+      );
+      const monthlyWorkouts = participantWorkouts.filter(
+        (workout) => workout.logged_at >= month.start && workout.logged_at <= month.end,
+      );
       const monthlyWeights = monthlyWeightsByUser.get(participantId) ?? [];
       const firstWeight = monthlyWeights[0]?.weight_kg;
       const lastWeight = monthlyWeights.at(-1)?.weight_kg;
@@ -111,8 +118,9 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
         userId: participantId,
         displayName: names.get(participantId) ?? "You",
         isCurrentUser: participantId === userId,
-        weeklyVolume: weeklyVolumeByUser.get(participantId) ?? 0,
-        weeklyWorkoutCount: weeklyCountByUser.get(participantId) ?? 0,
+        weeklyVolume: totalTrainingVolume(weeklyWorkouts),
+        weeklyTrainingDays: distinctTrainingDays(weeklyWorkouts),
+        monthlyTrainingDays: distinctTrainingDays(monthlyWorkouts),
         monthlyWeightChange:
           firstWeight === undefined || lastWeight === undefined || monthlyWeights.length < 2
             ? null

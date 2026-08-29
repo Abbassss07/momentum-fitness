@@ -141,7 +141,7 @@ export async function fetchFriendProgress(friendId: string): Promise<FriendProgr
   return {
     workouts: ((workouts.data ?? []) as WorkoutLog[]).map((item) => ({
       ...item,
-      weight_kg: Number(item.weight_kg),
+      weight_kg: item.weight_kg === null ? null : Number(item.weight_kg),
     })),
     weights: ((weights.data ?? []) as BodyWeightLog[]).map((item) => ({
       ...item,

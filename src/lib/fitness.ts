@@ -11,6 +11,7 @@ export type Exercise = {
   body_part_id: string;
   name: string;
   user_id: string | null;
+  is_bodyweight: boolean;
 };
 
 export type WorkoutLog = {
@@ -18,7 +19,7 @@ export type WorkoutLog = {
   user_id: string;
   exercise_id: string;
   logged_at: string;
-  weight_kg: number;
+  weight_kg: number | null;
   sets: number;
   reps: number;
   notes: string | null;
@@ -76,18 +77,31 @@ export function getCalendarMonthBounds(now = new Date()) {
   return { start: localDateIso(start), end: localDateIso(end) };
 }
 
-export function trainingVolume(
-  log: Pick<WorkoutLog, "weight_kg" | "sets" | "reps">,
+export function totalTrainingVolume(
+  logs: Iterable<Pick<WorkoutLog, "exercise_id" | "logged_at" | "weight_kg">>,
 ) {
-  return Number(log.weight_kg) * Number(log.sets) * Number(log.reps);
+  const loadByExerciseDay = new Map<string, number>();
+
+  for (const log of logs) {
+    const key = `${log.logged_at}:${log.exercise_id}`;
+    const load = Number(log.weight_kg ?? 0);
+    loadByExerciseDay.set(
+      key,
+      Math.max(loadByExerciseDay.get(key) ?? 0, load),
+    );
+  }
+
+  let total = 0;
+  for (const load of loadByExerciseDay.values()) total += load;
+  return total;
 }
 
-export function totalTrainingVolume(
-  logs: Iterable<Pick<WorkoutLog, "weight_kg" | "sets" | "reps">>,
+export function distinctTrainingDays(
+  logs: Iterable<Pick<WorkoutLog, "logged_at">>,
 ) {
-  let total = 0;
-  for (const log of logs) total += trainingVolume(log);
-  return total;
+  const days = new Set<string>();
+  for (const log of logs) days.add(log.logged_at);
+  return days.size;
 }
 
 export function formatVolume(volume: number) {
