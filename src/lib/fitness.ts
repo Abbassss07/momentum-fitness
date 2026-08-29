@@ -149,7 +149,7 @@ function calendarDayDifference(laterDate: string, earlierDate: string) {
 }
 
 export function formatVolume(volume: number) {
-  if (!volume) return "—";
+  if (!volume) return "-";
   return `${new Intl.NumberFormat("en", { maximumFractionDigits: 2 }).format(volume)} kg`;
 }
 

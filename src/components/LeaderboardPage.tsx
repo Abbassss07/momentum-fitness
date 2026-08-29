@@ -263,7 +263,7 @@ function formatScore(
     const count = entry.currentStreak;
     return `${count} ${count === 1 ? "day" : "days"}`;
   }
-  if (entry.monthlyWeightChange === null) return "—";
+  if (entry.monthlyWeightChange === null) return "-";
   const change = Math.abs(entry.monthlyWeightChange) < 0.05 ? 0 : entry.monthlyWeightChange;
   return `${change > 0 ? "+" : ""}${change.toFixed(1)} kg`;
 }

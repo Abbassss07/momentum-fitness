@@ -24,7 +24,7 @@ export function AuthScreen() {
     if (mode === "signup") {
       const normalizedUsername = username.trim().toLowerCase();
       if (!/^[a-z][a-z0-9_]{2,23}$/.test(normalizedUsername)) {
-        setError("Use 3–24 lowercase letters, numbers, or underscores. Start with a letter.");
+        setError("Use 3-24 lowercase letters, numbers, or underscores. Start with a letter.");
         setBusy(false);
         return;
       }
@@ -139,7 +139,7 @@ export function AuthScreen() {
                   required
                 />
                 <small id="username-hint" className="field-hint">
-                  3–24 characters. Letters, numbers, and underscores.
+                  3-24 characters. Letters, numbers, and underscores.
                 </small>
               </label>
             ) : null}

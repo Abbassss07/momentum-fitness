@@ -586,13 +586,13 @@ function Dashboard({
         <dl>
           <SnapshotItem
             term="Body weight"
-            value={latestWeight === undefined ? "â€”" : `${latestWeight.toFixed(1)} kg`}
+            value={latestWeight === undefined ? "-" : `${latestWeight.toFixed(1)} kg`}
           />
           <SnapshotItem
-            term={`Change Â· ${range}`}
+            term={`Change - ${range}`}
             value={
               weightChange === null
-                ? "â€”"
+                ? "-"
                 : `${weightChange > 0 ? "+" : ""}${weightChange.toFixed(1)} kg`
             }
             tone={weightChange === null ? undefined : weightChange <= 0 ? "positive" : undefined}
@@ -602,7 +602,7 @@ function Dashboard({
           <SnapshotItem
             term="Current streak"
             value={`${streak.days} ${streak.days === 1 ? "day" : "days"}`}
-            detail={streak.isAtRisk ? "At risk — train today" : undefined}
+            detail={streak.isAtRisk ? "At risk - train today" : undefined}
           />
         </dl>
       </section>
@@ -619,7 +619,7 @@ function Dashboard({
 
           <div className="chart-summary">
             <strong>
-              {latestWeight === undefined ? "â€”" : latestWeight.toFixed(1)}
+              {latestWeight === undefined ? "-" : latestWeight.toFixed(1)}
               {latestWeight !== undefined ? <small> kg</small> : null}
             </strong>
             {weightChange !== null ? (
@@ -673,7 +673,7 @@ function Dashboard({
                   </span>
                   <span className="activity-name">
                     <strong>{exercise?.name ?? "Exercise"}</strong>
-                    <small>{log.sets} sets Ã— {log.reps} reps</small>
+                    <small>{log.sets} sets x {log.reps} reps</small>
                   </span>
                   <span className="activity-weight">
                     {formatWorkoutLoad(log.weight_kg)}
@@ -1003,8 +1003,8 @@ function ExercisesPage({
               </div>
 
               <dl className="detail-stats">
-                <div><dt>Personal best</dt><dd>{personalBest ? `${personalBest} kg` : "â€”"}</dd></div>
-                <div><dt>Last session</dt><dd>{last ? formatDate(last.logged_at, true) : "â€”"}</dd></div>
+                <div><dt>Personal best</dt><dd>{personalBest ? `${personalBest} kg` : "-"}</dd></div>
+                <div><dt>Last session</dt><dd>{last ? formatDate(last.logged_at, true) : "-"}</dd></div>
                 <div><dt>Total entries</dt><dd>{exerciseLogs.length}</dd></div>
               </dl>
 
@@ -1034,13 +1034,13 @@ function ExercisesPage({
                 </div>
                 <div className="history-table">
                   <div className="history-head" aria-hidden="true">
-                    <span>Date</span><span>Weight</span><span>Sets Ã— reps</span><span />
+                    <span>Date</span><span>Weight</span><span>Sets x reps</span><span />
                   </div>
                   {exerciseLogs.toReversed().map((log) => (
                     <div className="history-row" key={log.id}>
                       <span>{formatDate(log.logged_at)}</span>
                       <strong>{formatWorkoutLoad(log.weight_kg)}</strong>
-                      <span>{log.sets} Ã— {log.reps}</span>
+                      <span>{log.sets} x {log.reps}</span>
                       <span className="row-actions">
                         <button type="button" onClick={() => onEdit(log)} aria-label="Edit entry">
                           <Pencil size={15} />

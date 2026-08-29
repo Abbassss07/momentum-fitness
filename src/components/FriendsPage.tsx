@@ -126,7 +126,7 @@ export function FriendsPage({ user, exercises, onNotice }: { user: User; exercis
               <span className="sr-only">Friend&apos;s username</span><Search size={16} aria-hidden="true" />
               <input type="text" value={username} onChange={(event) => setUsername(event.target.value.toLowerCase())} placeholder="friend_username" minLength={3} maxLength={24} pattern="[a-z][a-z0-9_]{2,23}" autoCapitalize="none" spellCheck={false} required autoComplete="off" />
             </label>
-            <button className="primary-button" disabled={busyId === "search"}>{busyId === "search" ? "Searching…" : "Search"}</button>
+            <button className="primary-button" disabled={busyId === "search"}>{busyId === "search" ? "Searching..." : "Search"}</button>
           </form>
           {result ? (
             <div className="friend-result">
@@ -138,7 +138,7 @@ export function FriendsPage({ user, exercises, onNotice }: { user: User; exercis
 
         <section className="journal-section requests-section" aria-labelledby="requests-title">
           <div className="section-heading"><div><p className="section-label">Pending</p><h2 id="requests-title">Friend requests</h2></div>{lists.incoming.length ? <span className="request-count">{lists.incoming.length}</span> : null}</div>
-          {loading ? <p className="friend-empty">Checking for requests…</p> : null}
+          {loading ? <p className="friend-empty">Checking for requests...</p> : null}
           {!loading && !lists.incoming.length && !lists.outgoing.length ? <p className="friend-empty">No pending requests.</p> : null}
           <div className="request-groups">
             {lists.incoming.length ? <div><h3>Incoming</h3>{lists.incoming.map(({ friendship, profile }) => (
@@ -191,7 +191,7 @@ function FriendProgressView({ selection, progress, loading, error, exercises, bu
     <div className="friend-progress-page">
       <button type="button" className="text-button friend-back-button" onClick={onBack}><ArrowLeft size={15} /> Back to friends</button>
       <header className="page-header friend-progress-header">
-        <div><p className="section-label">Friend progress · Read-only</p><h1>{displayName}</h1><p>@{profile.username}</p></div>
+        <div><p className="section-label">Friend progress - Read-only</p><h1>{displayName}</h1><p>@{profile.username}</p></div>
         <button type="button" className="secondary-button danger-action" disabled={busy} onClick={onUnfriend}><UserMinus size={16} /> {busy ? "Removing..." : "Unfriend"}</button>
       </header>
 
@@ -201,20 +201,20 @@ function FriendProgressView({ selection, progress, loading, error, exercises, bu
         <>
           <section className="weekly-snapshot friend-progress-stats" aria-labelledby="friend-stats-title">
             <div className="snapshot-heading"><CalendarDays size={18} aria-hidden="true" /><div><h2 id="friend-stats-title">Progress summary</h2><p>Shared with friends</p></div></div>
-            <dl><div><dt>Total workouts</dt><dd>{workouts.length}</dd></div><div><dt>Current weight</dt><dd>{latestWeight === undefined ? "—" : `${latestWeight.toFixed(1)} kg`}</dd></div><div><dt>This week&apos;s volume</dt><dd>{formatVolume(weeklyVolume)}</dd></div></dl>
+            <dl><div><dt>Total workouts</dt><dd>{workouts.length}</dd></div><div><dt>Current weight</dt><dd>{latestWeight === undefined ? "-" : `${latestWeight.toFixed(1)} kg`}</dd></div><div><dt>This week&apos;s volume</dt><dd>{formatVolume(weeklyVolume)}</dd></div></dl>
           </section>
 
           <section className="journal-section weight-section friend-weight-section" aria-labelledby="friend-weight-title">
             <div className="section-heading"><div><p className="section-label">Body weight</p><h2 id="friend-weight-title">Progress over time</h2></div><RangeSelect value={range} onChange={setRange} /></div>
-            <div className="chart-summary"><strong>{latestWeight === undefined ? "—" : latestWeight.toFixed(1)}{latestWeight !== undefined ? <small> kg</small> : null}</strong>{weightChange !== null ? <span>{weightChange > 0 ? "+" : ""}{weightChange.toFixed(1)} kg over {range.toLowerCase()}</span> : <span>No change available for this range.</span>}</div>
+            <div className="chart-summary"><strong>{latestWeight === undefined ? "-" : latestWeight.toFixed(1)}{latestWeight !== undefined ? <small> kg</small> : null}</strong>{weightChange !== null ? <span>{weightChange > 0 ? "+" : ""}{weightChange.toFixed(1)} kg over {range.toLowerCase()}</span> : <span>No change available for this range.</span>}</div>
             <ProgressChart points={visibleWeights} emptyLabel={`${displayName} has no body-weight entries in this range yet.`} />
           </section>
 
           <section className="journal-section history-card friend-workout-history" aria-labelledby="friend-history-title">
             <div className="section-heading"><div><p className="section-label">Workout history</p><h2 id="friend-history-title">Recent workouts</h2></div><Dumbbell size={18} aria-hidden="true" /></div>
             <div className="history-table friend-history-table">
-              <div className="history-head" aria-hidden="true"><span>Date</span><span>Exercise</span><span>Weight</span><span>Sets × reps</span><span>Notes</span></div>
-              {workouts.slice(0, 12).map((workout) => <div className="history-row" key={workout.id}><span>{formatDate(workout.logged_at)}</span><strong>{exerciseById.get(workout.exercise_id) ?? "Custom exercise"}</strong><span>{workout.weight_kg === null ? "Bodyweight" : `${workout.weight_kg} kg`}</span><span>{workout.sets} × {workout.reps}</span><span className="friend-workout-notes">{workout.notes || "—"}</span></div>)}
+              <div className="history-head" aria-hidden="true"><span>Date</span><span>Exercise</span><span>Weight</span><span>Sets x reps</span><span>Notes</span></div>
+              {workouts.slice(0, 12).map((workout) => <div className="history-row" key={workout.id}><span>{formatDate(workout.logged_at)}</span><strong>{exerciseById.get(workout.exercise_id) ?? "Custom exercise"}</strong><span>{workout.weight_kg === null ? "Bodyweight" : `${workout.weight_kg} kg`}</span><span>{workout.sets} x {workout.reps}</span><span className="friend-workout-notes">{workout.notes || "-"}</span></div>)}
               {!workouts.length ? <p className="history-empty">No workouts have been logged yet.</p> : null}
             </div>
           </section>

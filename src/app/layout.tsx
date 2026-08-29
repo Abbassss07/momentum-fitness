@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Momentum â€” Fitness Tracker",
+  title: "Momentum - Fitness Tracker",
   description: "Track your lifts, body weight, and progress over time.",
 };
 

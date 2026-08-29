@@ -38,7 +38,7 @@ export function ProfileSettings({
 
     if (!USERNAME_PATTERN.test(normalizedUsername)) {
       setError(
-        "Use 3–24 lowercase letters, numbers, or underscores. Start with a letter.",
+        "Use 3-24 lowercase letters, numbers, or underscores. Start with a letter.",
       );
       return;
     }
@@ -147,7 +147,7 @@ export function ProfileSettings({
               />
             </span>
             <small className="field-hint">
-              3–24 characters. Lowercase letters, numbers, and underscores.
+              3-24 characters. Lowercase letters, numbers, and underscores.
             </small>
           </label>
 
