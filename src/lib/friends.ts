@@ -1,8 +1,15 @@
+import type { BodyWeightLog, WorkoutLog } from "@/lib/fitness";
 import { supabase } from "@/lib/supabase";
 
 export type FriendProfile = {
   id: string;
   username: string;
+  display_name: string | null;
+};
+
+export type FriendProgress = {
+  workouts: WorkoutLog[];
+  weights: BodyWeightLog[];
 };
 
 export type FriendshipStatus = "pending" | "accepted" | "declined";
@@ -28,7 +35,8 @@ export async function findProfileByUsername(username: string) {
     search_username: username.trim().toLowerCase(),
   });
   if (error) throw error;
-  return ((data ?? []) as FriendProfile[])[0] ?? null;
+  const profile = ((data ?? []) as Array<Omit<FriendProfile, "display_name">>)[0];
+  return profile ? { ...profile, display_name: null } : null;
 }
 
 export async function fetchFriendshipLists(userId: string): Promise<FriendshipLists> {
@@ -46,7 +54,10 @@ export async function fetchFriendshipLists(userId: string): Promise<FriendshipLi
   const profiles = new Map<string, FriendProfile>();
 
   if (profileIds.length) {
-    const result = await supabase.from("profiles").select("id,username").in("id", profileIds);
+    const result = await supabase
+      .from("profiles")
+      .select("id,username,display_name")
+      .in("id", profileIds);
     if (result.error) throw result.error;
     for (const profile of (result.data ?? []) as FriendProfile[]) profiles.set(profile.id, profile);
   }
@@ -57,7 +68,11 @@ export async function fetchFriendshipLists(userId: string): Promise<FriendshipLi
       : friendship.requester_id;
     return {
       friendship,
-      profile: profiles.get(profileId) ?? { id: profileId, username: "momentum_member" },
+      profile: profiles.get(profileId) ?? {
+        id: profileId,
+        username: "momentum_member",
+        display_name: null,
+      },
     };
   };
 
@@ -107,22 +122,30 @@ export async function removeFriendship(id: string) {
   if (error) throw error;
 }
 
-export async function fetchFriendSummary(friendId: string) {
+export async function fetchFriendProgress(friendId: string): Promise<FriendProgress> {
   const [workouts, weights] = await Promise.all([
-    supabase.from("workout_logs").select("logged_at").eq("user_id", friendId),
+    supabase
+      .from("workout_logs")
+      .select("*")
+      .eq("user_id", friendId)
+      .order("logged_at", { ascending: false }),
     supabase
       .from("body_weight_logs")
-      .select("logged_at,weight_kg")
+      .select("*")
       .eq("user_id", friendId)
-      .order("logged_at", { ascending: false })
-      .limit(1),
+      .order("logged_at", { ascending: true }),
   ]);
   if (workouts.error) throw workouts.error;
   if (weights.error) throw weights.error;
+
   return {
-    workoutCount: workouts.data?.length ?? 0,
-    latestWeight: weights.data?.[0]
-      ? { ...weights.data[0], weight_kg: Number(weights.data[0].weight_kg) }
-      : null,
+    workouts: ((workouts.data ?? []) as WorkoutLog[]).map((item) => ({
+      ...item,
+      weight_kg: Number(item.weight_kg),
+    })),
+    weights: ((weights.data ?? []) as BodyWeightLog[]).map((item) => ({
+      ...item,
+      weight_kg: Number(item.weight_kg),
+    })),
   };
 }

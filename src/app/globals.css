@@ -1550,6 +1550,82 @@ button:disabled {
 .friend-summary small { margin-top: 3px; color: var(--muted); font-size: 10px; }
 .friend-summary-note { margin: 14px 0 0; color: var(--muted); font-size: 11px; }
 
+.friend-progress-page {
+  min-width: 0;
+}
+
+.friend-back-button {
+  margin-bottom: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.friend-progress-header {
+  margin-bottom: 22px;
+}
+
+.danger-action {
+  color: var(--danger);
+}
+
+.danger-action:hover {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+  background: color-mix(in srgb, var(--danger) 6%, var(--surface));
+}
+
+.friend-progress-stats dl {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.friend-weight-section,
+.friend-workout-history {
+  margin-bottom: 18px;
+}
+
+.friend-history-table .history-head,
+.friend-history-table .history-row {
+  grid-template-columns: .8fr 1.25fr .65fr .7fr 1.4fr;
+}
+
+.friend-workout-notes {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-progress-loading {
+  display: grid;
+  gap: 18px;
+}
+
+.friend-progress-loading .skeleton-line {
+  width: 100%;
+  height: 112px;
+}
+
+.friend-progress-loading .skeleton-chart {
+  height: 360px;
+}
+
+.friend-progress-error {
+  padding: 28px;
+}
+
+.friend-progress-error p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.friend-progress-zero {
+  min-height: 145px;
+  margin-top: -1px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+}
+
 .friends-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(290px, 0.65fr);
@@ -2395,6 +2471,39 @@ button:disabled {
   .row-actions { flex-direction: column; align-items: flex-end; }
   .friend-summary dl { grid-template-columns: 1fr; }
   .friend-summary dl > div + div { border-top: 1px solid var(--border); border-left: 0; }
+
+  .friend-progress-header {
+    align-items: flex-start;
+  }
+
+  .friend-progress-header > .secondary-button {
+    display: inline-flex;
+  }
+
+  .friend-progress-stats dl {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .friend-progress-stats dl > div:last-child {
+    grid-column: span 2;
+  }
+
+  .friend-history-table .history-head,
+  .friend-history-table .history-row {
+    grid-template-columns: 1fr 1.25fr .7fr;
+  }
+
+  .friend-history-table .history-head span:nth-child(3),
+  .friend-history-table .history-row > span:nth-child(3) {
+    display: block;
+  }
+
+  .friend-history-table .history-head span:nth-child(4),
+  .friend-history-table .history-row > span:nth-child(4),
+  .friend-history-table .history-head span:nth-child(5),
+  .friend-history-table .history-row > span:nth-child(5) {
+    display: none;
+  }
 
   .friends-icon {
     margin-bottom: 26px;

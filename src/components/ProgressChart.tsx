@@ -1,13 +1,37 @@
 "use client";
 
-import type { ChartPoint } from "@/lib/fitness";
-import { formatDate } from "@/lib/fitness";
+import type { ChartPoint, RangeKey } from "@/lib/fitness";
+import { formatDate, RANGE_OPTIONS } from "@/lib/fitness";
 
 type ProgressChartProps = {
   points: ChartPoint[];
   unit?: string;
   emptyLabel?: string;
 };
+
+export function RangeSelect({
+  value,
+  onChange,
+}: {
+  value: RangeKey;
+  onChange: (range: RangeKey) => void;
+}) {
+  return (
+    <label className="range-select">
+      <span className="sr-only">Chart date range</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as RangeKey)}
+      >
+        {RANGE_OPTIONS.map((option) => (
+          <option key={option} value={option}>
+            {option === "ALL" ? "All time" : option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 export function ProgressChart({
   points,

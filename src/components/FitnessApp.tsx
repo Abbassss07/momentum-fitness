@@ -29,7 +29,7 @@ import {
   X,
 } from "lucide-react";
 import { Brand } from "@/components/AuthScreen";
-import { ProgressChart } from "@/components/ProgressChart";
+import { ProgressChart, RangeSelect } from "@/components/ProgressChart";
 import { FriendsPage } from "@/components/FriendsPage";
 import { LeaderboardPage } from "@/components/LeaderboardPage";
 import { ProfileSettings } from "@/components/ProfileSettings";
@@ -42,7 +42,6 @@ import {
   formatDate,
   getCalendarWeekBounds,
   initials,
-  RANGE_OPTIONS,
   RangeKey,
   todayIso,
   trainingVolume,
@@ -367,7 +366,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
               onCustom={() => setCustomModal(true)}
             />
           ) : section === "friends" ? (
-            <FriendsPage user={user} onNotice={setNotice} />
+            <FriendsPage user={user} exercises={exercises} onNotice={setNotice} />
           ) : section === "leaderboard" ? (
             <LeaderboardPage userId={user.id} />
           ) : (
@@ -1015,30 +1014,6 @@ function ExercisesPage({
         </section>
       </div>
     </>
-  );
-}
-
-function RangeSelect({
-  value,
-  onChange,
-}: {
-  value: RangeKey;
-  onChange: (range: RangeKey) => void;
-}) {
-  return (
-    <label className="range-select">
-      <span className="sr-only">Chart date range</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value as RangeKey)}
-      >
-        {RANGE_OPTIONS.map((option) => (
-          <option key={option} value={option}>
-            {option === "ALL" ? "All time" : option}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 
