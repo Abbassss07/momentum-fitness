@@ -82,12 +82,17 @@ export function trainingVolume(
   return Number(log.weight_kg) * Number(log.sets) * Number(log.reps);
 }
 
+export function totalTrainingVolume(
+  logs: Iterable<Pick<WorkoutLog, "weight_kg" | "sets" | "reps">>,
+) {
+  let total = 0;
+  for (const log of logs) total += trainingVolume(log);
+  return total;
+}
+
 export function formatVolume(volume: number) {
   if (!volume) return "—";
-  if (volume >= 1000) {
-    return `${new Intl.NumberFormat("en", { maximumFractionDigits: 1 }).format(volume / 1000)}k kg`;
-  }
-  return `${Math.round(volume)} kg`;
+  return `${new Intl.NumberFormat("en", { maximumFractionDigits: 2 }).format(volume)} kg`;
 }
 
 export function startForRange(range: RangeKey) {

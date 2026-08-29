@@ -40,11 +40,12 @@ import {
   Exercise,
   filterPoints,
   formatDate,
+  formatVolume,
   getCalendarWeekBounds,
   initials,
   RangeKey,
   todayIso,
-  trainingVolume,
+  totalTrainingVolume,
   WorkoutLog,
 } from "@/lib/fitness";
 import { supabase } from "@/lib/supabase";
@@ -540,10 +541,7 @@ function Dashboard({
   const { start: monday } = getCalendarWeekBounds();
   const weeklyWorkouts = workouts.filter((item) => item.logged_at >= monday);
   const weeklySessions = new Set(weeklyWorkouts.map((item) => item.logged_at)).size;
-  const weeklyVolume = weeklyWorkouts.reduce(
-    (total, item) => total + trainingVolume(item),
-    0,
-  );
+  const weeklyVolume = totalTrainingVolume(weeklyWorkouts);
   const exerciseById = new Map(exercises.map((item) => [item.id, item]));
   const recentPrs = getRecentPrs(workouts).slice(0, 3);
   const recentExercises = getRecentExerciseProgress(workouts).slice(0, 3);
@@ -1430,12 +1428,6 @@ function CustomExerciseModal({
       </form>
     </ModalFrame>
   );
-}
-
-function formatVolume(volume: number) {
-  if (!volume) return "â€”";
-  if (volume >= 1000) return `${new Intl.NumberFormat("en", { maximumFractionDigits: 1 }).format(volume / 1000)}k kg`;
-  return `${Math.round(volume)} kg`;
 }
 
 function getRecentPrs(workouts: WorkoutLog[]) {

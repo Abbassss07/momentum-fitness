@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 
 type ProfileRecord = {
   id: string;
+  username: string;
   display_name: string | null;
 };
 
@@ -47,7 +48,7 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
   const [profilesResult, workoutsResult, weightsResult] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id,display_name")
+      .select("id,username,display_name")
       .in("id", participantIds),
     supabase
       .from("workout_logs")
@@ -71,9 +72,21 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
   const names = new Map(
     ((profilesResult.data ?? []) as ProfileRecord[]).map((profile) => [
       profile.id,
-      profile.display_name?.trim() || null,
+      profile.display_name?.trim() || profile.username.trim(),
     ]),
   );
+  for (const friend of friends) {
+    if (!names.has(friend.id)) {
+      names.set(
+        friend.id,
+        friend.display_name?.trim() || friend.username.trim(),
+      );
+    }
+  }
+
+  if (friends.some((friend) => !names.get(friend.id))) {
+    throw new Error("Could not load an accepted friend's profile.");
+  }
   const weeklyVolumeByUser = new Map<string, number>();
   const weeklyCountByUser = new Map<string, number>();
 
@@ -104,9 +117,7 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
       const lastWeight = monthlyWeights.at(-1)?.weight_kg;
       return {
         userId: participantId,
-        displayName:
-          names.get(participantId) ??
-          (participantId === userId ? "You" : "Momentum member"),
+        displayName: names.get(participantId) ?? "You",
         isCurrentUser: participantId === userId,
         weeklyVolume: weeklyVolumeByUser.get(participantId) ?? 0,
         weeklyWorkoutCount: weeklyCountByUser.get(participantId) ?? 0,

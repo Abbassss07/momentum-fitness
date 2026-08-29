@@ -13,7 +13,7 @@ import {
   sendFriendRequest,
 } from "@/lib/friends";
 import type { FriendProfile, FriendProgress, FriendshipLists } from "@/lib/friends";
-import { filterPoints, formatDate, formatVolume, getCalendarWeekBounds, initials, trainingVolume } from "@/lib/fitness";
+import { filterPoints, formatDate, formatVolume, getCalendarWeekBounds, initials, totalTrainingVolume } from "@/lib/fitness";
 import type { Exercise, RangeKey } from "@/lib/fitness";
 
 const EMPTY_LISTS: FriendshipLists = { friends: [], incoming: [], outgoing: [], declined: [] };
@@ -184,7 +184,7 @@ function FriendProgressView({ selection, progress, loading, error, exercises, bu
   const firstVisibleWeight = visibleWeights[0]?.value;
   const weightChange = latestWeight !== undefined && firstVisibleWeight !== undefined ? latestWeight - firstVisibleWeight : null;
   const { start: weekStart, end: weekEnd } = getCalendarWeekBounds();
-  const weeklyVolume = workouts.filter((workout) => workout.logged_at >= weekStart && workout.logged_at <= weekEnd).reduce((total, workout) => total + trainingVolume(workout), 0);
+  const weeklyVolume = totalTrainingVolume(workouts.filter((workout) => workout.logged_at >= weekStart && workout.logged_at <= weekEnd));
   const displayName = profile.display_name || `@${profile.username}`;
 
   return (
