@@ -75,14 +75,6 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
       profile.display_name?.trim() || profile.username.trim(),
     ]),
   );
-  for (const friend of friends) {
-    if (!names.has(friend.id)) {
-      names.set(
-        friend.id,
-        friend.display_name?.trim() || friend.username.trim(),
-      );
-    }
-  }
 
   if (friends.some((friend) => !names.get(friend.id))) {
     throw new Error("Could not load an accepted friend's profile.");
