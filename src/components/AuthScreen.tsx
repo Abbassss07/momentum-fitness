@@ -1,10 +1,15 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { ArrowRight, Check, TrendingUp } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-export function AuthScreen() {
+export function AuthScreen({
+  onAuthenticated,
+}: {
+  onAuthenticated: (user: User) => void;
+}) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -54,8 +59,13 @@ export function AuthScreen() {
 
     if (result.error) {
       setError(result.error.message);
-    } else if (mode === "signup" && !result.data.session) {
-      setMessage("Check your email to confirm your account, then sign in.");
+    } else if (mode === "signup") {
+      const session = result.data.session;
+      if (session) {
+        onAuthenticated(session.user);
+      } else {
+        setMessage("Check your email to confirm your account, then sign in.");
+      }
     }
     setBusy(false);
   }
@@ -198,4 +208,5 @@ export function Brand() {
     </div>
   );
 }
+
 

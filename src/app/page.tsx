@@ -36,7 +36,8 @@ export default function Home() {
     );
   }
 
-  if (!user) return <AuthScreen />;
+  if (!user) return <AuthScreen onAuthenticated={setUser} />;
   return <FitnessApp user={user} />;
 }
+
 
