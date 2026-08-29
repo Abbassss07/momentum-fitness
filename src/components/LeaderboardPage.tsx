@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Dumbbell, RefreshCw, Scale, Trophy, Users } from "lucide-react";
+import { BarChart3, Dumbbell, Flame, RefreshCw, Scale, Trophy, Users } from "lucide-react";
 import { formatVolume, initials } from "@/lib/fitness";
 import {
   fetchLeaderboardData,
@@ -7,7 +7,7 @@ import {
   LeaderboardEntry,
 } from "@/lib/leaderboard";
 
-type LeaderboardView = "volume" | "consistency" | "weight";
+type LeaderboardView = "volume" | "consistency" | "streak" | "weight";
 type ConsistencyRange = "week" | "month";
 
 const VIEW_DETAILS: Record<
@@ -25,6 +25,12 @@ const VIEW_DETAILS: Record<
     title: "Training consistency",
     description: "Distinct calendar days with at least one logged workout.",
     icon: BarChart3,
+  },
+  streak: {
+    label: "Current streak",
+    title: "Current training streak",
+    description: "One rest day is allowed between logged workout days.",
+    icon: Flame,
   },
   weight: {
     label: "Weight change",
@@ -222,6 +228,7 @@ function scoreFor(
       ? entry.weeklyTrainingDays
       : entry.monthlyTrainingDays;
   }
+  if (view === "streak") return entry.currentStreak;
   return entry.monthlyWeightChange === null
     ? Number.NEGATIVE_INFINITY
     : Math.abs(entry.monthlyWeightChange);
@@ -236,6 +243,7 @@ function hasScore(
   if (view === "consistency") {
     return scoreFor(entry, view, consistencyRange) > 0;
   }
+  if (view === "streak") return entry.currentStreak > 0;
   return entry.monthlyWeightChange !== null;
 }
 
@@ -251,6 +259,10 @@ function formatScore(
     const count = scoreFor(entry, view, consistencyRange);
     return `${count} ${count === 1 ? "day" : "days"}`;
   }
+  if (view === "streak") {
+    const count = entry.currentStreak;
+    return `${count} ${count === 1 ? "day" : "days"}`;
+  }
   if (entry.monthlyWeightChange === null) return "—";
   const change = Math.abs(entry.monthlyWeightChange) < 0.05 ? 0 : entry.monthlyWeightChange;
   return `${change > 0 ? "+" : ""}${change.toFixed(1)} kg`;
@@ -258,6 +270,7 @@ function formatScore(
 
 function emptyTitle(view: LeaderboardView, consistencyRange: ConsistencyRange) {
   if (view === "weight") return "No monthly comparison yet";
+  if (view === "streak") return "No active streaks yet";
   if (view === "consistency" && consistencyRange === "month") {
     return "No workouts this month";
   }
@@ -270,6 +283,9 @@ function emptyDescription(
 ) {
   if (view === "weight") {
     return "Two body-weight logs in the current month are needed to calculate a change.";
+  }
+  if (view === "streak") {
+    return "Log a workout today to begin a training streak.";
   }
   if (view === "consistency" && consistencyRange === "month") {
     return "The leaderboard will fill in when someone logs a workout this month.";

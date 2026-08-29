@@ -752,7 +752,7 @@ button:disabled {
 .weekly-snapshot dl {
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
 }
 
 .weekly-snapshot dl > div {
@@ -781,6 +781,14 @@ button:disabled {
 
 .weekly-snapshot dd.positive {
   color: var(--accent);
+}
+
+.snapshot-risk {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.2;
 }
 
 .journal-section,

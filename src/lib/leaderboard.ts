@@ -1,8 +1,10 @@
 import { fetchAcceptedFriends } from "@/lib/friends";
 import {
+  currentStreak,
   distinctTrainingDays,
   getCalendarMonthBounds,
   getCalendarWeekBounds,
+  todayIso,
   totalTrainingVolume,
 } from "@/lib/fitness";
 import { supabase } from "@/lib/supabase";
@@ -33,6 +35,7 @@ export type LeaderboardEntry = {
   weeklyVolume: number;
   weeklyTrainingDays: number;
   monthlyTrainingDays: number;
+  currentStreak: number;
   monthlyWeightChange: number | null;
 };
 
@@ -46,31 +49,41 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
   const participantIds = [userId, ...friends.map((friend) => friend.id)];
   const week = getCalendarWeekBounds();
   const month = getCalendarMonthBounds();
+  const today = todayIso();
   const workoutStart = week.start < month.start ? week.start : month.start;
   const workoutEnd = week.end > month.end ? week.end : month.end;
 
-  const [profilesResult, workoutsResult, weightsResult] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("id,username,display_name")
-      .in("id", participantIds),
-    supabase
-      .from("workout_logs")
-      .select("user_id,exercise_id,logged_at,weight_kg")
-      .in("user_id", participantIds)
-      .gte("logged_at", workoutStart)
-      .lte("logged_at", workoutEnd),
-    supabase
-      .from("body_weight_logs")
-      .select("user_id,logged_at,weight_kg")
-      .in("user_id", participantIds)
-      .gte("logged_at", month.start)
-      .lte("logged_at", month.end)
-      .order("logged_at", { ascending: true }),
-  ]);
+  const [profilesResult, workoutsResult, streakWorkoutsResult, weightsResult] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id,username,display_name")
+        .in("id", participantIds),
+      supabase
+        .from("workout_logs")
+        .select("user_id,exercise_id,logged_at,weight_kg")
+        .in("user_id", participantIds)
+        .gte("logged_at", workoutStart)
+        .lte("logged_at", workoutEnd),
+      supabase
+        .from("workout_logs")
+        .select("user_id,logged_at")
+        .in("user_id", participantIds)
+        .lte("logged_at", today),
+      supabase
+        .from("body_weight_logs")
+        .select("user_id,logged_at,weight_kg")
+        .in("user_id", participantIds)
+        .gte("logged_at", month.start)
+        .lte("logged_at", month.end)
+        .order("logged_at", { ascending: true }),
+    ]);
 
   const firstError =
-    profilesResult.error || workoutsResult.error || weightsResult.error;
+    profilesResult.error ||
+    workoutsResult.error ||
+    streakWorkoutsResult.error ||
+    weightsResult.error;
   if (firstError) throw firstError;
 
   const names = new Map(
@@ -92,6 +105,13 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
         workout.weight_kg === null ? null : Number(workout.weight_kg),
     });
     workoutsByUser.set(workout.user_id, existing);
+  }
+
+  const streakDatesByUser = new Map<string, Array<Pick<WorkoutRecord, "logged_at">>>();
+  for (const workout of (streakWorkoutsResult.data ?? []) as WorkoutRecord[]) {
+    const existing = streakDatesByUser.get(workout.user_id) ?? [];
+    existing.push({ logged_at: workout.logged_at });
+    streakDatesByUser.set(workout.user_id, existing);
   }
 
   const monthlyWeightsByUser = new Map<string, MonthlyWeightRecord[]>();
@@ -121,6 +141,7 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
         weeklyVolume: totalTrainingVolume(weeklyWorkouts),
         weeklyTrainingDays: distinctTrainingDays(weeklyWorkouts),
         monthlyTrainingDays: distinctTrainingDays(monthlyWorkouts),
+        currentStreak: currentStreak(streakDatesByUser.get(participantId) ?? []).days,
         monthlyWeightChange:
           firstWeight === undefined || lastWeight === undefined || monthlyWeights.length < 2
             ? null

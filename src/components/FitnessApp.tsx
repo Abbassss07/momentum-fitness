@@ -37,6 +37,7 @@ import {
   BodyPart,
   BodyWeightLog,
   ChartPoint,
+  currentStreak,
   Exercise,
   filterPoints,
   formatDate,
@@ -549,6 +550,7 @@ function Dashboard({
   );
   const weeklySessions = new Set(weeklyWorkouts.map((item) => item.logged_at)).size;
   const weeklyVolume = totalTrainingVolume(weeklyWorkouts);
+  const streak = currentStreak(workouts);
   const exerciseById = new Map(exercises.map((item) => [item.id, item]));
   const recentPrs = getRecentPrs(workouts).slice(0, 3);
   const recentExercises = getRecentExerciseProgress(workouts).slice(0, 3);
@@ -597,6 +599,11 @@ function Dashboard({
           />
           <SnapshotItem term="Workouts" value={String(weeklySessions)} />
           <SnapshotItem term="Training volume" value={formatVolume(weeklyVolume)} />
+          <SnapshotItem
+            term="Current streak"
+            value={`${streak.days} ${streak.days === 1 ? "day" : "days"}`}
+            detail={streak.isAtRisk ? "At risk — train today" : undefined}
+          />
         </dl>
       </section>
 
@@ -772,15 +779,18 @@ function SnapshotItem({
   term,
   value,
   tone,
+  detail,
 }: {
   term: string;
   value: string;
   tone?: "positive";
+  detail?: string;
 }) {
   return (
     <div>
       <dt>{term}</dt>
       <dd className={tone === "positive" ? "positive" : ""}>{value}</dd>
+      {detail ? <small className="snapshot-risk">{detail}</small> : null}
     </div>
   );
 }
@@ -1528,5 +1538,4 @@ function getRecentExerciseProgress(workouts: WorkoutLog[]) {
 function formatWorkoutLoad(weight: number | null) {
   return weight === null ? "Bodyweight" : `${weight} kg`;
 }
-
 

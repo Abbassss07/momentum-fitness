@@ -99,9 +99,53 @@ export function totalTrainingVolume(
 export function distinctTrainingDays(
   logs: Iterable<Pick<WorkoutLog, "logged_at">>,
 ) {
+  return distinctTrainingDates(logs).length;
+}
+
+export function distinctTrainingDates(
+  logs: Iterable<Pick<WorkoutLog, "logged_at">>,
+) {
   const days = new Set<string>();
   for (const log of logs) days.add(log.logged_at);
-  return days.size;
+  return [...days].toSorted();
+}
+
+export type CurrentStreak = {
+  days: number;
+  isAtRisk: boolean;
+};
+
+export function currentStreak(
+  logs: Iterable<Pick<WorkoutLog, "logged_at">>,
+  today = todayIso(),
+): CurrentStreak {
+  const trainingDates = distinctTrainingDates(logs).filter((date) => date <= today);
+  const latestDate = trainingDates.at(-1);
+
+  if (!latestDate) return { days: 0, isAtRisk: false };
+
+  const gapFromToday = calendarDayDifference(today, latestDate);
+  if (gapFromToday >= 3) return { days: 0, isAtRisk: false };
+
+  let days = 1;
+  for (let index = trainingDates.length - 1; index > 0; index -= 1) {
+    const gap = calendarDayDifference(trainingDates[index], trainingDates[index - 1]);
+    if (gap > 2) break;
+    days += 1;
+  }
+
+  return { days, isAtRisk: gapFromToday === 2 };
+}
+
+function calendarDayDifference(laterDate: string, earlierDate: string) {
+  const toUtcTimestamp = (date: string) => {
+    const [year, month, day] = date.split("-").map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+
+  return Math.round(
+    (toUtcTimestamp(laterDate) - toUtcTimestamp(earlierDate)) / 86_400_000,
+  );
 }
 
 export function formatVolume(volume: number) {
