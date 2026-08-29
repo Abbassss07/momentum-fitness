@@ -10,7 +10,6 @@ import {
 } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
-  CalendarDays,
   Check,
   ChevronRight,
   Dumbbell,
@@ -42,12 +41,9 @@ import {
   Exercise,
   filterPoints,
   formatDate,
-  formatVolume,
-  getCalendarWeekBounds,
   initials,
   RangeKey,
   todayIso,
-  totalTrainingVolume,
   WorkoutLog,
 } from "@/lib/fitness";
 import { supabase } from "@/lib/supabase";
@@ -545,16 +541,8 @@ function Dashboard({
     latestWeight !== undefined && firstVisibleWeight !== undefined
       ? latestWeight - firstVisibleWeight
       : null;
-  const { start: monday, end: sunday } = getCalendarWeekBounds();
-  const weeklyWorkouts = workouts.filter(
-    (item) => item.logged_at >= monday && item.logged_at <= sunday,
-  );
-  const weeklySessions = new Set(weeklyWorkouts.map((item) => item.logged_at)).size;
-  const weeklyVolume = totalTrainingVolume(weeklyWorkouts);
   const streak = currentStreak(workouts);
   const exerciseById = new Map(exercises.map((item) => [item.id, item]));
-  const recentPrs = getRecentPrs(workouts).slice(0, 3);
-  const recentExercises = getRecentExerciseProgress(workouts).slice(0, 3);
 
   return (
     <>
@@ -576,39 +564,21 @@ function Dashboard({
         </div>
       </header>
 
-      <section className="weekly-snapshot" aria-labelledby="weekly-summary-title">
-        <div className="snapshot-heading">
-          <CalendarDays size={18} aria-hidden="true" />
-          <div>
-            <h2 id="weekly-summary-title">Weekly snapshot</h2>
-            <p>Since Monday</p>
-          </div>
+      <section className="streak-summary" aria-labelledby="streak-title">
+        <div>
+          <p className="section-label">Consistency</p>
+          <h2 id="streak-title">Current streak</h2>
+          <p className="streak-description">
+            {streak.isAtRisk ? "Train today to keep it going." : "Keep building your routine."}
+          </p>
         </div>
-        <dl>
-          <SnapshotItem
-            term="Body weight"
-            value={latestWeight === undefined ? "-" : `${latestWeight.toFixed(1)} kg`}
-          />
-          <SnapshotItem
-            term={`Change - ${range}`}
-            value={
-              weightChange === null
-                ? "-"
-                : `${weightChange > 0 ? "+" : ""}${weightChange.toFixed(1)} kg`
-            }
-            tone={weightChange === null ? undefined : weightChange <= 0 ? "positive" : undefined}
-          />
-          <SnapshotItem term="Workouts" value={String(weeklySessions)} />
-          <SnapshotItem term="Training volume" value={formatVolume(weeklyVolume)} />
-          <SnapshotItem
-            term="Current streak"
-            value={`${streak.days} ${streak.days === 1 ? "day" : "days"}`}
-            detail={streak.isAtRisk ? "At risk - train today" : undefined}
-          />
-        </dl>
+        <div className="streak-value" aria-label={`${streak.days} day current streak`}>
+          <strong>{streak.days}</strong>
+          <span>{streak.days === 1 ? "day" : "days"}</span>
+        </div>
       </section>
 
-      <div className="dashboard-primary">
+      <div className="dashboard-primary dashboard-primary-solo">
         <section className="journal-section weight-section" aria-labelledby="weight-title">
           <div className="section-heading">
             <div>
@@ -638,11 +608,9 @@ function Dashboard({
             emptyLabel="Your weight trend will appear after your first entry."
           />
         </section>
-
-        <LeaderboardPreview currentSessions={weeklySessions} />
       </div>
 
-      <div className="dashboard-secondary">
+      <div className="dashboard-secondary dashboard-secondary-solo">
         <section className="journal-section" aria-labelledby="activity-title">
           <div className="section-heading">
             <div>
@@ -693,132 +661,8 @@ function Dashboard({
             ) : null}
           </div>
         </section>
-
-        <section className="journal-section" aria-labelledby="prs-title">
-          <div className="section-heading">
-            <div>
-              <p className="section-label">Personal records</p>
-              <h2 id="prs-title">Recent PRs</h2>
-            </div>
-          </div>
-          <div className="pr-list">
-            {recentPrs.map((log) => (
-              <button
-                type="button"
-                key={log.id}
-                className="pr-row"
-                onClick={() => onOpenExercise(log.exercise_id)}
-              >
-                <span className="pr-icon"><Trophy size={15} /></span>
-                <span>
-                  <strong>{exerciseById.get(log.exercise_id)?.name ?? "Exercise"}</strong>
-                  <small>{formatDate(log.logged_at)}</small>
-                </span>
-                <b>{formatWorkoutLoad(log.weight_kg)}</b>
-              </button>
-            ))}
-            {!recentPrs.length ? (
-              <QuietEmpty
-                title="No personal records yet."
-                text="Your first logged best will start this list."
-              />
-            ) : null}
-          </div>
-        </section>
       </div>
-
-      <section className="journal-section exercise-progress-section" aria-labelledby="exercise-progress-title">
-        <div className="section-heading">
-          <div>
-            <p className="section-label">Exercise progress</p>
-            <h2 id="exercise-progress-title">Movements you are tracking</h2>
-          </div>
-          <button
-            type="button"
-            className="text-button"
-            onClick={() => recentExercises[0] && onOpenExercise(recentExercises[0].exerciseId)}
-            disabled={!recentExercises.length}
-          >
-            View details
-          </button>
-        </div>
-        <div className="progress-list">
-          {recentExercises.map((item) => (
-            <button
-              type="button"
-              key={item.exerciseId}
-              className="progress-row"
-              onClick={() => onOpenExercise(item.exerciseId)}
-            >
-              <span className="progress-name">
-                <strong>{exerciseById.get(item.exerciseId)?.name ?? "Exercise"}</strong>
-                <small>{item.entries} logged {item.entries === 1 ? "entry" : "entries"}</small>
-              </span>
-              <MiniTrend points={item.points} />
-              <span className="progress-best">
-                <small>Best</small>
-                <strong>{item.best} kg</strong>
-              </span>
-              <ChevronRight size={16} aria-hidden="true" />
-            </button>
-          ))}
-          {!recentExercises.length ? (
-            <QuietEmpty
-              title="No exercise trends yet."
-              text="Progress becomes useful once you have a few sessions recorded."
-              action="Browse exercises"
-              onAction={() => onOpenExercise(exercises[0]?.id ?? "")}
-            />
-          ) : null}
-        </div>
-      </section>
     </>
-  );
-}
-
-function SnapshotItem({
-  term,
-  value,
-  tone,
-  detail,
-}: {
-  term: string;
-  value: string;
-  tone?: "positive";
-  detail?: string;
-}) {
-  return (
-    <div>
-      <dt>{term}</dt>
-      <dd className={tone === "positive" ? "positive" : ""}>{value}</dd>
-      {detail ? <small className="snapshot-risk">{detail}</small> : null}
-    </div>
-  );
-}
-
-function LeaderboardPreview({ currentSessions }: { currentSessions: number }) {
-  return (
-    <aside className="journal-section leaderboard" aria-labelledby="leaderboard-title">
-      <div className="section-heading">
-        <div>
-          <p className="section-label">Friends preview</p>
-          <h2 id="leaderboard-title">Weekly consistency</h2>
-        </div>
-        <span className="preview-label">This week</span>
-      </div>
-      <ol>
-        <li className="current">
-          <span className="rank">1</span>
-          <span className="friend-avatar">YO</span>
-          <span className="friend-name">You</span>
-          <strong>{currentSessions}</strong>
-          <small>{currentSessions === 1 ? "training day" : "training days"}</small>
-        </li>
-      </ol>
-      <p className="leaderboard-note">
-        Open Leaderboard to compare with accepted friends across all three metrics.
-      </p>
-    </aside>
   );
 }
 
@@ -1094,29 +938,6 @@ function QuietEmpty({
         </button>
       ) : null}
     </div>
-  );
-}
-
-function MiniTrend({ points }: { points: ChartPoint[] }) {
-  const lastPoints = points.slice(-8);
-  if (lastPoints.length < 2) return <span className="mini-trend-empty">Not enough data</span>;
-
-  const values = lastPoints.map((point) => point.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const spread = Math.max(max - min, 1);
-  const line = lastPoints
-    .map((point, index) => {
-      const x = (index / (lastPoints.length - 1)) * 92 + 4;
-      const y = 25 - ((point.value - min) / spread) * 20;
-      return `${x},${y}`;
-    })
-    .join(" ");
-
-  return (
-    <svg className="mini-trend" viewBox="0 0 100 30" aria-label="Recent exercise trend">
-      <polyline points={line} fill="none" stroke="currentColor" strokeWidth="2" />
-    </svg>
   );
 }
 
@@ -1518,50 +1339,6 @@ function CustomExerciseModal({
       </form>
     </ModalFrame>
   );
-}
-
-function getRecentPrs(workouts: WorkoutLog[]) {
-  const bestByExercise = new Map<string, number>();
-  const prs: WorkoutLog[] = [];
-  const chronological = workouts.toSorted((a, b) =>
-    a.logged_at.localeCompare(b.logged_at),
-  );
-
-  for (const log of chronological) {
-    if (log.weight_kg === null) continue;
-    const previousBest = bestByExercise.get(log.exercise_id);
-    if (previousBest === undefined || log.weight_kg > previousBest) {
-      prs.push(log);
-      bestByExercise.set(log.exercise_id, log.weight_kg);
-    }
-  }
-
-  return prs.toReversed();
-}
-
-function getRecentExerciseProgress(workouts: WorkoutLog[]) {
-  const byExercise = new Map<string, WorkoutLog[]>();
-  for (const log of workouts) {
-    const existing = byExercise.get(log.exercise_id) ?? [];
-    existing.push(log);
-    byExercise.set(log.exercise_id, existing);
-  }
-
-  return [...byExercise.entries()]
-    .map(([exerciseId, logs]) => {
-      const ordered = logs.toSorted((a, b) => a.logged_at.localeCompare(b.logged_at));
-      return {
-        exerciseId,
-        entries: logs.length,
-        best: Math.max(...logs.map((log) => log.weight_kg ?? 0)),
-        latestDate: ordered.at(-1)?.logged_at ?? "",
-        points: ordered.map((log) => ({
-          date: log.logged_at,
-          value: log.weight_kg ?? 0,
-        })),
-      };
-    })
-    .toSorted((a, b) => b.latestDate.localeCompare(a.latestDate));
 }
 
 function formatWorkoutLoad(weight: number | null) {

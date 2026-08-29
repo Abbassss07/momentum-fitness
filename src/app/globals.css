@@ -716,6 +716,50 @@ button:disabled {
   gap: 9px;
 }
 
+.streak-summary {
+  min-height: 96px;
+  margin-bottom: 18px;
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+}
+
+.streak-summary h2 {
+  margin: 5px 0 3px;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.streak-description {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.streak-value {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  color: var(--accent);
+}
+
+.streak-value strong {
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.streak-value span {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 620;
+}
+
 .weekly-snapshot {
   min-height: 112px;
   margin-bottom: 18px;
@@ -802,6 +846,11 @@ button:disabled {
   display: grid;
   grid-template-columns: minmax(0, 1.75fr) minmax(280px, 0.75fr);
   gap: 18px;
+}
+
+.dashboard-primary-solo,
+.dashboard-secondary-solo {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .weight-section {
