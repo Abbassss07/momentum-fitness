@@ -52,6 +52,44 @@ export function todayIso() {
   return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10);
 }
 
+function localDateIso(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function getCalendarWeekBounds(now = new Date()) {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const day = start.getDay();
+  start.setDate(start.getDate() + (day === 0 ? -6 : 1 - day));
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+
+  return { start: localDateIso(start), end: localDateIso(end) };
+}
+
+export function getCalendarMonthBounds(now = new Date()) {
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { start: localDateIso(start), end: localDateIso(end) };
+}
+
+export function trainingVolume(
+  log: Pick<WorkoutLog, "weight_kg" | "sets" | "reps">,
+) {
+  return Number(log.weight_kg) * Number(log.sets) * Number(log.reps);
+}
+
+export function formatVolume(volume: number) {
+  if (!volume) return "—";
+  if (volume >= 1000) {
+    return `${new Intl.NumberFormat("en", { maximumFractionDigits: 1 }).format(volume / 1000)}k kg`;
+  }
+  return `${Math.round(volume)} kg`;
+}
+
 export function startForRange(range: RangeKey) {
   if (range === "ALL") return null;
   const now = new Date();

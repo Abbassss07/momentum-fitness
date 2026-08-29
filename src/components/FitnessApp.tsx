@@ -21,6 +21,7 @@ import {
   Plus,
   Scale,
   Search,
+  Settings,
   Trophy,
   Trash2,
   TrendingUp,
@@ -30,6 +31,8 @@ import {
 import { Brand } from "@/components/AuthScreen";
 import { ProgressChart } from "@/components/ProgressChart";
 import { FriendsPage } from "@/components/FriendsPage";
+import { LeaderboardPage } from "@/components/LeaderboardPage";
+import { ProfileSettings } from "@/components/ProfileSettings";
 import {
   BodyPart,
   BodyWeightLog,
@@ -37,15 +40,17 @@ import {
   Exercise,
   filterPoints,
   formatDate,
+  getCalendarWeekBounds,
   initials,
   RANGE_OPTIONS,
   RangeKey,
   todayIso,
+  trainingVolume,
   WorkoutLog,
 } from "@/lib/fitness";
 import { supabase } from "@/lib/supabase";
 
-type Section = "dashboard" | "workouts" | "friends";
+type Section = "dashboard" | "workouts" | "friends" | "leaderboard" | "settings";
 
 type FitnessAppProps = {
   user: User;
@@ -62,6 +67,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
       ? user.user_metadata.username
       : "momentum_member",
   );
+  const [profileDisplayName, setProfileDisplayName] = useState("");
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -89,7 +95,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
           .order("logged_at", { ascending: true }),
         supabase
           .from("profiles")
-          .select("username")
+          .select("username,display_name")
           .eq("id", user.id)
           .single(),
       ]);
@@ -117,6 +123,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
       })),
     );
     if (profileResult.data?.username) setProfileUsername(profileResult.data.username);
+    setProfileDisplayName(profileResult.data?.display_name ?? "");
     setLoading(false);
   }, [user.id]);
 
@@ -226,7 +233,11 @@ export function FitnessApp({ user }: FitnessAppProps) {
       ? "Journal"
       : section === "workouts"
         ? "Exercises"
-        : "Friends";
+        : section === "friends"
+          ? "Friends"
+          : section === "leaderboard"
+            ? "Leaderboard"
+            : "Profile";
 
   return (
     <main className="app-shell">
@@ -261,6 +272,18 @@ export function FitnessApp({ user }: FitnessAppProps) {
             icon={<Users size={18} />}
             label="Friends"
             onClick={() => navigate("friends")}
+          />
+          <NavButton
+            active={section === "leaderboard"}
+            icon={<Trophy size={18} />}
+            label="Leaderboard"
+            onClick={() => navigate("leaderboard")}
+          />
+          <NavButton
+            active={section === "settings"}
+            icon={<Settings size={18} />}
+            label="Profile"
+            onClick={() => navigate("settings")}
           />
         </nav>
 
@@ -343,8 +366,21 @@ export function FitnessApp({ user }: FitnessAppProps) {
               onDelete={deleteWorkout}
               onCustom={() => setCustomModal(true)}
             />
-          ) : (
+          ) : section === "friends" ? (
             <FriendsPage user={user} onNotice={setNotice} />
+          ) : section === "leaderboard" ? (
+            <LeaderboardPage userId={user.id} />
+          ) : (
+            <ProfileSettings
+              userId={user.id}
+              username={profileUsername}
+              displayName={profileDisplayName}
+              onSaved={(profile) => {
+                setProfileUsername(profile.username);
+                setProfileDisplayName(profile.displayName);
+              }}
+              onNotice={setNotice}
+            />
           )}
         </div>
       </section>
@@ -367,6 +403,18 @@ export function FitnessApp({ user }: FitnessAppProps) {
           icon={<Users size={19} />}
           label="Friends"
           onClick={() => navigate("friends")}
+        />
+        <NavButton
+          active={section === "leaderboard"}
+          icon={<Trophy size={19} />}
+          label="Ranks"
+          onClick={() => navigate("leaderboard")}
+        />
+        <NavButton
+          active={section === "settings"}
+          icon={<Settings size={19} />}
+          label="Profile"
+          onClick={() => navigate("settings")}
         />
       </nav>
 
@@ -466,11 +514,11 @@ function Dashboard({
     latestWeight !== undefined && firstVisibleWeight !== undefined
       ? latestWeight - firstVisibleWeight
       : null;
-  const monday = getMondayStartIso();
+  const { start: monday } = getCalendarWeekBounds();
   const weeklyWorkouts = workouts.filter((item) => item.logged_at >= monday);
   const weeklySessions = new Set(weeklyWorkouts.map((item) => item.logged_at)).size;
   const weeklyVolume = weeklyWorkouts.reduce(
-    (total, item) => total + item.weight_kg * item.sets * item.reps,
+    (total, item) => total + trainingVolume(item),
     0,
   );
   const exerciseById = new Map(exercises.map((item) => [item.id, item]));
@@ -711,15 +759,6 @@ function SnapshotItem({
 }
 
 function LeaderboardPreview({ currentSessions }: { currentSessions: number }) {
-  const rows = [
-    { name: "Maya Chen", initials: "MC", sessions: 5 },
-    { name: "Noah Williams", initials: "NW", sessions: 4 },
-    { name: "You", initials: "YO", sessions: currentSessions, current: true },
-    { name: "Leila Ahmed", initials: "LA", sessions: 3 },
-  ]
-    .sort((a, b) => b.sessions - a.sessions)
-    .slice(0, 4);
-
   return (
     <aside className="journal-section leaderboard" aria-labelledby="leaderboard-title">
       <div className="section-heading">
@@ -727,21 +766,19 @@ function LeaderboardPreview({ currentSessions }: { currentSessions: number }) {
           <p className="section-label">Friends preview</p>
           <h2 id="leaderboard-title">Weekly consistency</h2>
         </div>
-        <span className="preview-label">Preview</span>
+        <span className="preview-label">This week</span>
       </div>
       <ol>
-        {rows.map((row, index) => (
-          <li key={row.name} className={row.current ? "current" : ""}>
-            <span className="rank">{index + 1}</span>
-            <span className="friend-avatar">{row.initials}</span>
-            <span className="friend-name">{row.name}</span>
-            <strong>{row.sessions}</strong>
-            <small>{row.sessions === 1 ? "session" : "sessions"}</small>
-          </li>
-        ))}
+        <li className="current">
+          <span className="rank">1</span>
+          <span className="friend-avatar">YO</span>
+          <span className="friend-name">You</span>
+          <strong>{currentSessions}</strong>
+          <small>{currentSessions === 1 ? "training day" : "training days"}</small>
+        </li>
       </ol>
       <p className="leaderboard-note">
-        Ranked by training days. Week begins Monday. Friend data is illustrative.
+        Open Leaderboard to compare with accepted friends across all three metrics.
       </p>
     </aside>
   );
@@ -1384,15 +1421,6 @@ function CustomExerciseModal({
       </form>
     </ModalFrame>
   );
-}
-
-function getMondayStartIso() {
-  const today = new Date();
-  const day = today.getDay();
-  const difference = day === 0 ? -6 : 1 - day;
-  today.setDate(today.getDate() + difference);
-  const offset = today.getTimezoneOffset();
-  return new Date(today.getTime() - offset * 60_000).toISOString().slice(0, 10);
 }
 
 function formatVolume(volume: number) {
