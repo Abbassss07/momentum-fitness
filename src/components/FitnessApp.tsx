@@ -386,6 +386,28 @@ export function FitnessApp({ user }: FitnessAppProps) {
         </div>
       </section>
 
+      {section === "dashboard" || section === "workouts" ? (
+        <div className="mobile-quick-log" role="group" aria-label="Quick logging actions">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setWeightModal(true)}
+          >
+            <Scale size={17} />
+            Body weight
+          </button>
+          <button
+            type="button"
+            className="primary-button"
+            disabled={!selectedExerciseId}
+            onClick={() => beginWorkout()}
+          >
+            <Plus size={17} />
+            {section === "workouts" ? "Log set" : "Log workout"}
+          </button>
+        </div>
+      ) : null}
+
       <nav className="mobile-nav" aria-label="Mobile navigation">
         <NavButton
           active={section === "dashboard"}
@@ -1088,17 +1110,22 @@ function ModalFrame({
   children: ReactNode;
 }) {
   useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
     }
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [onClose]);
 
   return (
     <div
       className="modal-backdrop"
-      onMouseDown={(event) => {
+      onPointerDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
@@ -1178,6 +1205,7 @@ function WeightModal({
               max="500"
               step="0.1"
               inputMode="decimal"
+              enterKeyHint="done"
               placeholder="72.5"
               autoFocus
               required
@@ -1282,6 +1310,7 @@ function WorkoutModal({
               max="1000"
               step="0.25"
               inputMode="decimal"
+              enterKeyHint="next"
               placeholder="80"
               autoFocus
               required
@@ -1296,6 +1325,7 @@ function WorkoutModal({
               min="1"
               max="50"
               inputMode="numeric"
+              enterKeyHint="next"
               required
             />
           </label>
@@ -1308,6 +1338,7 @@ function WorkoutModal({
               min="1"
               max="1000"
               inputMode="numeric"
+              enterKeyHint="next"
               required
             />
           </label>
@@ -1318,6 +1349,7 @@ function WorkoutModal({
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             maxLength={500}
+            enterKeyHint="done"
             placeholder="Anything worth remembering?"
           />
         </label>
@@ -1448,5 +1480,4 @@ function getRecentExerciseProgress(workouts: WorkoutLog[]) {
     })
     .toSorted((a, b) => b.latestDate.localeCompare(a.latestDate));
 }
-
 

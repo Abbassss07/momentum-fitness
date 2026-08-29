@@ -25,10 +25,13 @@
 html {
   background: var(--canvas);
   color-scheme: light;
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   background: var(--canvas);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
@@ -104,7 +107,7 @@ button:disabled {
 
 .primary-button,
 .secondary-button {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 15px;
   display: inline-flex;
   align-items: center;
@@ -148,7 +151,10 @@ button:disabled {
 }
 
 .text-button {
-  padding: 4px 0;
+  min-height: 44px;
+  padding: 4px 2px;
+  display: inline-flex;
+  align-items: center;
   border: 0;
   color: var(--accent);
   background: transparent;
@@ -302,7 +308,7 @@ button:disabled {
 }
 
 .auth-tabs button {
-  min-height: 42px;
+  min-height: 44px;
   border: 0;
   border-bottom: 2px solid transparent;
   color: var(--muted);
@@ -456,7 +462,7 @@ button:disabled {
 }
 
 .sidebar nav button {
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 11px;
   display: flex;
   align-items: center;
@@ -539,7 +545,7 @@ button:disabled {
 }
 
 .logout-button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 9px;
   display: flex;
   align-items: center;
@@ -555,6 +561,7 @@ button:disabled {
 }
 
 .main-panel {
+  min-width: 0;
   width: calc(100% - 226px);
   min-height: 100vh;
   margin-left: 226px;
@@ -596,13 +603,16 @@ button:disabled {
 }
 
 .content-wrap {
+  min-width: 0;
+  max-width: 100%;
   width: min(1180px, 100%);
   margin: 0 auto;
   padding: 46px clamp(24px, 4vw, 54px) 76px;
 }
 
 .mobile-nav,
-.sidebar-scrim {
+.sidebar-scrim,
+.mobile-quick-log {
   display: none;
 }
 
@@ -631,7 +641,7 @@ button:disabled {
 .profile-form input,
 .username-input {
   width: 100%;
-  min-height: 43px;
+  min-height: 44px;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   color: var(--ink);
@@ -661,7 +671,7 @@ button:disabled {
 
 .username-input input {
   min-width: 0;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0;
   border: 0;
   outline: 0;
@@ -807,7 +817,7 @@ button:disabled {
 }
 
 .range-select select {
-  min-height: 32px;
+  min-height: 44px;
   padding: 0 28px 0 9px;
   border: 1px solid var(--border);
   border-radius: 7px;
@@ -844,6 +854,8 @@ button:disabled {
 
 .chart-wrap {
   width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .progress-chart {
@@ -986,7 +998,7 @@ button:disabled {
 }
 
 .leaderboard-tabs button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 14px;
   border: 0;
   border-radius: 7px;
@@ -1410,7 +1422,7 @@ button:disabled {
 .friend-search-form label {
   min-width: 0;
   flex: 1;
-  height: 40px;
+  height: 44px;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -1429,6 +1441,7 @@ button:disabled {
 .friend-search-form input {
   min-width: 0;
   width: 100%;
+  min-height: 44px;
   border: 0;
   outline: 0;
   color: var(--ink);
@@ -1504,7 +1517,7 @@ button:disabled {
 .row-actions { display: flex; align-items: center; gap: 5px; }
 
 .icon-text-button {
-  min-height: 34px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1526,6 +1539,7 @@ button:disabled {
 .friends-list-section { margin-bottom: 18px; }
 .friends-list { margin-top: 13px; }
 .friend-list-row > a { min-width: 0; flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 4px; color: inherit; text-decoration: none; border-radius: 7px; }
+.friend-list-row > a { min-height: 44px; }
 .friend-list-row > a:hover { background: var(--surface-muted); }
 .friend-list-row > a > svg { flex: 0 0 auto; color: var(--muted); }
 
@@ -1714,7 +1728,8 @@ button:disabled {
 }
 
 .body-tabs button {
-  min-height: 31px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0 9px;
   border: 0;
   border-radius: 6px;
@@ -1744,7 +1759,7 @@ button:disabled {
 }
 
 .exercise-toolbar label {
-  min-height: 39px;
+  min-height: 44px;
   padding: 0 10px;
   flex: 1;
   display: flex;
@@ -1758,6 +1773,7 @@ button:disabled {
 
 .exercise-toolbar input {
   width: 100%;
+  min-height: 44px;
   border: 0;
   outline: 0;
   color: var(--ink);
@@ -1767,7 +1783,8 @@ button:disabled {
 
 .mobile-custom {
   display: none;
-  width: 39px;
+  width: 44px;
+  min-height: 44px;
   border: 1px solid var(--accent);
   border-radius: 8px;
   color: #fff;
@@ -1928,8 +1945,8 @@ button:disabled {
 }
 
 .row-actions button {
-  width: 29px;
-  height: 29px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border: 0;
@@ -1987,18 +2004,22 @@ button:disabled {
   padding: 20px;
   position: fixed;
   inset: 0;
+  min-height: 100dvh;
   z-index: 100;
   display: grid;
   place-items: center;
   background: rgba(24, 27, 25, 0.54);
+  overscroll-behavior: contain;
   animation: fade-in 140ms ease;
 }
 
 .modal {
   width: min(500px, 100%);
-  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   padding: 25px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-bottom: 92px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--surface-strong);
@@ -2029,8 +2050,8 @@ button:disabled {
 }
 
 .modal-head > button {
-  width: 33px;
-  height: 33px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border: 1px solid var(--border);
@@ -2073,6 +2094,7 @@ button:disabled {
   justify-content: flex-end;
   gap: 8px;
   border-top: 1px solid var(--border);
+  background: var(--surface-strong);
 }
 
 .modal-actions.standalone {
@@ -2215,9 +2237,10 @@ button:disabled {
   }
 
   .mobile-close {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     display: grid;
+    flex: 0 0 44px;
     place-items: center;
     border: 0;
     color: var(--muted);
@@ -2235,8 +2258,8 @@ button:disabled {
   }
 
   .menu-button {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     margin-right: 11px;
     display: grid;
     place-items: center;
@@ -2250,12 +2273,35 @@ button:disabled {
   }
 
   .topbar-action {
-    min-height: 37px;
+    display: none;
     margin-left: auto;
   }
 
   .content-wrap {
-    padding: 31px 18px 104px;
+    padding: 31px 18px 166px;
+  }
+
+  .mobile-quick-log {
+    min-height: 62px;
+    padding: 9px max(12px, env(safe-area-inset-right)) 9px max(12px, env(safe-area-inset-left));
+    position: fixed;
+    right: 0;
+    bottom: 68px;
+    left: 0;
+    z-index: 21;
+    display: grid;
+    grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
+    gap: 9px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-strong);
+  }
+
+  .mobile-quick-log button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding-right: 10px;
+    padding-left: 10px;
   }
 
   .mobile-nav {
@@ -2331,6 +2377,7 @@ button:disabled {
   .leaderboard-tabs {
     max-width: 100%;
     overflow-x: auto;
+    overscroll-behavior-inline: contain;
   }
 }
 
@@ -2362,11 +2409,6 @@ button:disabled {
   }
 
   .topbar-action {
-    width: 40px;
-    padding: 0;
-  }
-
-  .topbar-action span {
     display: none;
   }
 
@@ -2459,7 +2501,8 @@ button:disabled {
 
   .leaderboard-page { padding: 20px 16px; }
   .leaderboard-tabs { width: 100%; }
-  .leaderboard-tabs button { min-width: 0; padding: 0 10px; flex: 1; white-space: nowrap; }
+  .leaderboard-tabs { gap: 4px; overflow-x: visible; }
+  .leaderboard-tabs button { min-width: 0; padding: 0 8px; flex: 1; white-space: normal; line-height: 1.2; }
   .leaderboard-table li { grid-template-columns: 23px 30px minmax(0, 1fr) auto; gap: 9px; padding-right: 5px; padding-left: 5px; }
   .leaderboard-table li.current { margin: 0 -5px; padding-right: 10px; padding-left: 10px; }
   .leaderboard-score { font-size: 11px; }
@@ -2509,6 +2552,12 @@ button:disabled {
     margin-bottom: 26px;
   }
 
+  .body-tabs {
+    flex-wrap: wrap;
+    gap: 4px;
+    overflow-x: visible;
+  }
+
   .detail-heading h2 {
     font-size: 23px;
   }
@@ -2545,19 +2594,65 @@ button:disabled {
     display: none;
   }
 
-  .form-grid,
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 9px;
+  }
+
   .form-grid.three {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1.25fr) minmax(70px, .75fr) minmax(70px, .75fr);
+    gap: 8px;
+  }
+
+  .form-grid > label,
+  .form-grid.three > label {
+    min-width: 0;
+  }
+
+  .form-grid input,
+  .form-grid.three input {
+    min-width: 0;
+    padding-right: 9px;
+    padding-left: 9px;
   }
 
   .modal-backdrop {
-    padding: 9px;
+    padding: max(8px, env(safe-area-inset-top)) 8px 0;
     align-items: end;
   }
 
   .modal {
-    max-height: calc(100vh - 18px);
-    padding: 21px 17px;
+    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+    padding: 18px 17px 0;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  .modal-head {
+    margin-bottom: 17px;
+  }
+
+  .modal-head h2 {
+    font-size: 20px;
+  }
+
+  .modal-form {
+    gap: 13px;
+  }
+
+  .modal-form textarea {
+    min-height: 68px;
+  }
+
+  .modal-actions {
+    margin: 2px -17px 0;
+    padding: 12px 17px max(12px, env(safe-area-inset-bottom));
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+  }
+
+  .modal-actions .primary-button {
+    flex: 1;
   }
 
   .toast-region {
