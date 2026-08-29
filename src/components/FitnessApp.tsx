@@ -859,17 +859,27 @@ function ExercisesPage({
   const exerciseLogs = workouts
     .filter((item) => item.exercise_id === selectedExerciseId)
     .toSorted((a, b) => a.logged_at.localeCompare(b.logged_at));
-  const dailyBest = new Map<string, number>();
+  const isBodyweightExercise = selected?.is_bodyweight ?? false;
+  const dailyProgress = new Map<string, number>();
 
   for (const log of exerciseLogs) {
+    if (isBodyweightExercise) {
+      const totalReps = log.sets * log.reps;
+      dailyProgress.set(
+        log.logged_at,
+        (dailyProgress.get(log.logged_at) ?? 0) + totalReps,
+      );
+      continue;
+    }
+
     if (log.weight_kg === null) continue;
-    dailyBest.set(
+    dailyProgress.set(
       log.logged_at,
-      Math.max(dailyBest.get(log.logged_at) ?? 0, log.weight_kg),
+      Math.max(dailyProgress.get(log.logged_at) ?? 0, log.weight_kg),
     );
   }
 
-  const points: ChartPoint[] = [...dailyBest].map(([date, value]) => ({
+  const points: ChartPoint[] = [...dailyProgress].map(([date, value]) => ({
     date,
     value,
   }));
@@ -992,12 +1002,15 @@ function ExercisesPage({
                 <div className="section-heading">
                   <div>
                     <p className="section-label">Progress</p>
-                    <h2 id="lift-progress-title">Weight lifted</h2>
+                    <h2 id="lift-progress-title">
+                      {isBodyweightExercise ? "Reps" : "Weight (kg)"}
+                    </h2>
                   </div>
                   <RangeSelect value={range} onChange={setRange} />
                 </div>
                 <ProgressChart
                   points={visible}
+                  unit={isBodyweightExercise ? "reps" : "kg"}
                   emptyLabel={`Log ${selected.name} to start its progress chart.`}
                 />
               </section>
@@ -1515,4 +1528,5 @@ function getRecentExerciseProgress(workouts: WorkoutLog[]) {
 function formatWorkoutLoad(weight: number | null) {
   return weight === null ? "Bodyweight" : `${weight} kg`;
 }
+
 
