@@ -1,8 +1,10 @@
 import { fetchAcceptedFriends } from "@/lib/friends";
 import {
+  calculateImprovementPercent,
   currentStreak,
   distinctTrainingDays,
   getCalendarMonthBounds,
+  getPreviousCalendarWeekBounds,
   getCalendarWeekBounds,
   todayIso,
   totalTrainingVolume,
@@ -22,12 +24,6 @@ type WorkoutRecord = {
   weight_kg: number | null;
 };
 
-type MonthlyWeightRecord = {
-  user_id: string;
-  logged_at: string;
-  weight_kg: number;
-};
-
 export type LeaderboardEntry = {
   userId: string;
   displayName: string;
@@ -36,7 +32,7 @@ export type LeaderboardEntry = {
   weeklyTrainingDays: number;
   monthlyTrainingDays: number;
   currentStreak: number;
-  monthlyWeightChange: number | null;
+  improvementPercent: number | null;
 };
 
 export type LeaderboardData = {
@@ -48,12 +44,15 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
   const friends = await fetchAcceptedFriends(userId);
   const participantIds = [userId, ...friends.map((friend) => friend.id)];
   const week = getCalendarWeekBounds();
+  const previousWeeks = getPreviousCalendarWeekBounds();
   const month = getCalendarMonthBounds();
   const today = todayIso();
-  const workoutStart = week.start < month.start ? week.start : month.start;
+  const workoutStart = previousWeeks[0].start < month.start
+    ? previousWeeks[0].start
+    : month.start;
   const workoutEnd = week.end > month.end ? week.end : month.end;
 
-  const [profilesResult, workoutsResult, streakWorkoutsResult, weightsResult] =
+  const [profilesResult, workoutsResult, streakWorkoutsResult] =
     await Promise.all([
       supabase
         .from("profiles")
@@ -70,20 +69,12 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
         .select("user_id,logged_at")
         .in("user_id", participantIds)
         .lte("logged_at", today),
-      supabase
-        .from("body_weight_logs")
-        .select("user_id,logged_at,weight_kg")
-        .in("user_id", participantIds)
-        .gte("logged_at", month.start)
-        .lte("logged_at", month.end)
-        .order("logged_at", { ascending: true }),
     ]);
 
   const firstError =
     profilesResult.error ||
     workoutsResult.error ||
-    streakWorkoutsResult.error ||
-    weightsResult.error;
+    streakWorkoutsResult.error;
   if (firstError) throw firstError;
 
   const names = new Map(
@@ -114,39 +105,53 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
     streakDatesByUser.set(workout.user_id, existing);
   }
 
-  const monthlyWeightsByUser = new Map<string, MonthlyWeightRecord[]>();
-  for (const weight of (weightsResult.data ?? []) as MonthlyWeightRecord[]) {
-    const existing = monthlyWeightsByUser.get(weight.user_id) ?? [];
-    existing.push({ ...weight, weight_kg: Number(weight.weight_kg) });
-    monthlyWeightsByUser.set(weight.user_id, existing);
-  }
-
   return {
     friendCount: friends.length,
     entries: participantIds.map((participantId) => {
       const participantWorkouts = workoutsByUser.get(participantId) ?? [];
+      const trainingHistory = streakDatesByUser.get(participantId) ?? [];
+      const firstTrainingDate = trainingHistory.reduce<string | null>(
+        (earliest, workout) =>
+          earliest === null || workout.logged_at < earliest
+            ? workout.logged_at
+            : earliest,
+        null,
+      );
       const weeklyWorkouts = participantWorkouts.filter(
         (workout) => workout.logged_at >= week.start && workout.logged_at <= week.end,
       );
       const monthlyWorkouts = participantWorkouts.filter(
         (workout) => workout.logged_at >= month.start && workout.logged_at <= month.end,
       );
-      const monthlyWeights = monthlyWeightsByUser.get(participantId) ?? [];
-      const firstWeight = monthlyWeights[0]?.weight_kg;
-      const lastWeight = monthlyWeights.at(-1)?.weight_kg;
+      const priorWeeklyVolumes = previousWeeks
+        .filter(
+          (priorWeek) =>
+            firstTrainingDate !== null && firstTrainingDate <= priorWeek.end,
+        )
+        .map((priorWeek) =>
+          totalTrainingVolume(
+            participantWorkouts.filter(
+              (workout) =>
+                workout.logged_at >= priorWeek.start &&
+                workout.logged_at <= priorWeek.end,
+            ),
+          ),
+        );
+      const weeklyVolume = totalTrainingVolume(weeklyWorkouts);
       return {
         userId: participantId,
         displayName: names.get(participantId) ?? "You",
         isCurrentUser: participantId === userId,
-        weeklyVolume: totalTrainingVolume(weeklyWorkouts),
+        weeklyVolume,
         weeklyTrainingDays: distinctTrainingDays(weeklyWorkouts),
         monthlyTrainingDays: distinctTrainingDays(monthlyWorkouts),
-        currentStreak: currentStreak(streakDatesByUser.get(participantId) ?? []).days,
-        monthlyWeightChange:
-          firstWeight === undefined || lastWeight === undefined || monthlyWeights.length < 2
-            ? null
-            : lastWeight - firstWeight,
+        currentStreak: currentStreak(trainingHistory).days,
+        improvementPercent: calculateImprovementPercent(
+          weeklyVolume,
+          priorWeeklyVolumes,
+        ),
       };
     }),
   };
 }
+

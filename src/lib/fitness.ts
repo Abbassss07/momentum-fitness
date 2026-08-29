@@ -71,6 +71,27 @@ export function getCalendarWeekBounds(now = new Date()) {
   return { start: localDateIso(start), end: localDateIso(end) };
 }
 
+export function getPreviousCalendarWeekBounds(count = 4, now = new Date()) {
+  const currentWeekStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  const day = currentWeekStart.getDay();
+  currentWeekStart.setDate(
+    currentWeekStart.getDate() + (day === 0 ? -6 : 1 - day),
+  );
+
+  return Array.from({ length: count }, (_, index) => {
+    const weeksAgo = count - index;
+    const start = new Date(currentWeekStart);
+    start.setDate(start.getDate() - weeksAgo * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    return { start: localDateIso(start), end: localDateIso(end) };
+  });
+}
+
 export function getCalendarMonthBounds(now = new Date()) {
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -94,6 +115,20 @@ export function totalTrainingVolume(
   let total = 0;
   for (const load of loadByExerciseDay.values()) total += load;
   return total;
+}
+
+export function calculateImprovementPercent(
+  currentVolume: number,
+  priorWeeklyVolumes: number[],
+) {
+  if (priorWeeklyVolumes.length === 0) return null;
+
+  const trailingAverage =
+    priorWeeklyVolumes.reduce((total, volume) => total + volume, 0) /
+    priorWeeklyVolumes.length;
+  if (trailingAverage <= 0) return null;
+
+  return ((currentVolume - trailingAverage) / trailingAverage) * 100;
 }
 
 export function distinctTrainingDays(
@@ -182,5 +217,6 @@ export function formatDate(date: string, compact = false) {
 export function initials(email?: string) {
   return (email?.slice(0, 2) || "FT").toUpperCase();
 }
+
 
 
