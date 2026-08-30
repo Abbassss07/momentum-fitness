@@ -40,6 +40,16 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 The publishable Supabase key is designed for browser use. Database access is protected by Supabase Row Level Security policies.
 
+## Seed test history
+
+`scripts/seed-test-history.mjs` is a one-off visual-testing helper. It uses a service-role key and bypasses RLS, so it must only ever target a disposable test account.
+
+1. Add `SUPABASE_SERVICE_ROLE_KEY` and `ALLOW_TEST_DATA_SEED=true` to `.env.local`.
+2. Replace `TEST_USER_ID` at the top of the script with an existing Auth user's UUID.
+3. Run `npm run seed:test-history`.
+
+The script refuses to create users, requires confirmation, and only selects exercises that already exist in the library.
+
 ## Deployment
 
 The production app is hosted on Vercel. Connect this repository to a Vercel project, add the environment variables above, and use `main` as the production branch.
