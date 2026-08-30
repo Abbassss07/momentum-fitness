@@ -1,5 +1,7 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
+
+dotenv.config({ path: ".env.local" });
 
 // Replace this before running. The user must already exist in Supabase Auth.
 const TEST_USER_ID = "REPLACE_WITH_EXISTING_TEST_USER_UUID";
