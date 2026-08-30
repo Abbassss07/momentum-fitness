@@ -15,25 +15,25 @@ const VIEW_DETAILS: Record<
   { label: string; title: string; description: string; icon: typeof Dumbbell }
 > = {
   volume: {
-    label: "Weekly volume",
+    label: "Volume",
     title: "Weekly training volume",
     description: "One recorded load per exercise per day, Monday through Sunday.",
     icon: Dumbbell,
   },
   consistency: {
-    label: "Consistency",
+    label: "Days",
     title: "Training consistency",
     description: "Distinct calendar days with at least one logged workout.",
     icon: BarChart3,
   },
   streak: {
-    label: "Current streak",
+    label: "Streak",
     title: "Current training streak",
-    description: "One rest day is allowed between logged workout days.",
+    description: "Two rest days are allowed between logged workout days.",
     icon: Flame,
   },
   improvement: {
-    label: "Improvement",
+    label: "Progress",
     title: "Training improvement",
     description: "This week compared with your own prior four-week average.",
     icon: TrendingUp,

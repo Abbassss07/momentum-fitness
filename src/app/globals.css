@@ -929,7 +929,7 @@ button:disabled {
 
 .chart-y-label {
   fill: #969b98;
-  font-size: 9px;
+  font-size: 10px;
   text-anchor: end;
 }
 
@@ -949,7 +949,7 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   color: var(--muted-light);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .chart-empty {
@@ -2217,6 +2217,62 @@ button:disabled {
   margin-top: 0;
 }
 
+.workout-picker-list {
+  display: grid;
+  gap: 7px;
+}
+
+.workout-picker-list > .section-label {
+  margin: 0 0 3px;
+}
+
+.workout-picker-option {
+  width: 100%;
+  min-height: 56px;
+  padding: 9px 11px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--ink);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.workout-picker-option:hover {
+  border-color: #aeb1a9;
+  background: var(--canvas);
+}
+
+.workout-picker-option > svg:first-child {
+  color: var(--accent);
+}
+
+.workout-picker-option > svg:last-child {
+  color: var(--muted-light);
+}
+
+.workout-picker-option > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.workout-picker-option strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workout-picker-option small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
 .toast-region {
   position: fixed;
   right: 22px;
@@ -2394,7 +2450,11 @@ button:disabled {
   }
 
   .content-wrap {
-    padding: 31px 18px 166px;
+    padding: 31px 18px 98px;
+  }
+
+  .content-wrap.has-mobile-quick-log {
+    padding-bottom: 166px;
   }
 
   .mobile-quick-log {

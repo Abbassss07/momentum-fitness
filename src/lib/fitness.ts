@@ -150,6 +150,11 @@ export type CurrentStreak = {
   isAtRisk: boolean;
 };
 
+// Only dates represented by workout_logs are training dates. A streak permits
+// one rest day, so consecutive logged workout dates can be at most two calendar
+// days apart (for example, Monday and Wednesday).
+const MAX_TRAINING_DATE_GAP = 2;
+
 export function currentStreak(
   logs: Iterable<Pick<WorkoutLog, "logged_at">>,
   today = todayIso(),
@@ -160,16 +165,16 @@ export function currentStreak(
   if (!latestDate) return { days: 0, isAtRisk: false };
 
   const gapFromToday = calendarDayDifference(today, latestDate);
-  if (gapFromToday >= 3) return { days: 0, isAtRisk: false };
+  if (gapFromToday > MAX_TRAINING_DATE_GAP) return { days: 0, isAtRisk: false };
 
   let days = 1;
   for (let index = trainingDates.length - 1; index > 0; index -= 1) {
     const gap = calendarDayDifference(trainingDates[index], trainingDates[index - 1]);
-    if (gap > 2) break;
+    if (gap > MAX_TRAINING_DATE_GAP) break;
     days += 1;
   }
 
-  return { days, isAtRisk: gapFromToday === 2 };
+  return { days, isAtRisk: gapFromToday === MAX_TRAINING_DATE_GAP };
 }
 
 function calendarDayDifference(laterDate: string, earlierDate: string) {

@@ -70,6 +70,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
   const [notice, setNotice] = useState("");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [weightModal, setWeightModal] = useState(false);
+  const [workoutPicker, setWorkoutPicker] = useState(false);
   const [workoutModal, setWorkoutModal] = useState(false);
   const [customModal, setCustomModal] = useState(false);
   const [editingWorkout, setEditingWorkout] = useState<WorkoutLog | null>(null);
@@ -150,6 +151,11 @@ export function FitnessApp({ user }: FitnessAppProps) {
     if (exerciseId) setSelectedExerciseId(exerciseId);
     setEditingWorkout(existing ?? null);
     setWorkoutModal(true);
+  }
+
+  function openWorkoutPicker() {
+    setEditingWorkout(null);
+    setWorkoutPicker(true);
   }
 
   async function saveWeight(date: string, weight: number) {
@@ -336,7 +342,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
             <button
               type="button"
               className="primary-button topbar-action"
-              onClick={() => beginWorkout()}
+              onClick={openWorkoutPicker}
             >
               <Plus size={17} />
               <span>Log workout</span>
@@ -344,7 +350,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
           ) : null}
         </header>
 
-        <div className="content-wrap">
+        <div className={section === "dashboard" ? "content-wrap has-mobile-quick-log" : "content-wrap"}>
           {loading ? (
             <ContentSkeleton />
           ) : section === "dashboard" ? (
@@ -353,7 +359,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
               workouts={workouts}
               exercises={exercises}
               onLogWeight={() => setWeightModal(true)}
-              onLogWorkout={() => beginWorkout()}
+              onLogWorkout={openWorkoutPicker}
               onOpenExercise={(id) => {
                 setSelectedExerciseId(id);
                 setSection("workouts");
@@ -390,7 +396,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
         </div>
       </section>
 
-      {section === "dashboard" || section === "workouts" ? (
+      {section === "dashboard" ? (
         <div className="mobile-quick-log" role="group" aria-label="Quick logging actions">
           <button
             type="button"
@@ -403,11 +409,10 @@ export function FitnessApp({ user }: FitnessAppProps) {
           <button
             type="button"
             className="primary-button"
-            disabled={!selectedExerciseId}
-            onClick={() => beginWorkout()}
+            onClick={openWorkoutPicker}
           >
             <Plus size={17} />
-            {section === "workouts" ? "Log set" : "Log workout"}
+            Log workout
           </button>
         </div>
       ) : null}
@@ -458,6 +463,21 @@ export function FitnessApp({ user }: FitnessAppProps) {
         <WeightModal
           onClose={() => setWeightModal(false)}
           onSave={saveWeight}
+        />
+      ) : null}
+      {workoutPicker ? (
+        <WorkoutPicker
+          exercises={exercises}
+          workouts={workouts}
+          onClose={() => setWorkoutPicker(false)}
+          onSelect={(exerciseId) => {
+            setWorkoutPicker(false);
+            beginWorkout(exerciseId);
+          }}
+          onBrowse={() => {
+            setWorkoutPicker(false);
+            navigate("workouts");
+          }}
         />
       ) : null}
       {workoutModal ? (
@@ -1101,6 +1121,70 @@ function WeightModal({
           </button>
         </div>
       </form>
+    </ModalFrame>
+  );
+}
+
+function WorkoutPicker({
+  exercises,
+  workouts,
+  onClose,
+  onSelect,
+  onBrowse,
+}: {
+  exercises: Exercise[];
+  workouts: WorkoutLog[];
+  onClose: () => void;
+  onSelect: (exerciseId: string) => void;
+  onBrowse: () => void;
+}) {
+  const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]));
+  const recentExercises: Exercise[] = [];
+  const seenExerciseIds = new Set<string>();
+
+  for (const workout of workouts) {
+    if (seenExerciseIds.has(workout.exercise_id)) continue;
+    const exercise = exerciseById.get(workout.exercise_id);
+    if (!exercise) continue;
+    seenExerciseIds.add(exercise.id);
+    recentExercises.push(exercise);
+    if (recentExercises.length === 4) break;
+  }
+
+  return (
+    <ModalFrame
+      title="Choose exercise"
+      subtitle="Pick a recent movement, or browse your full library."
+      onClose={onClose}
+    >
+      {recentExercises.length ? (
+        <div className="workout-picker-list" aria-label="Recent exercises">
+          <p className="section-label">Recent exercises</p>
+          {recentExercises.map((exercise) => (
+            <button
+              type="button"
+              key={exercise.id}
+              className="workout-picker-option"
+              onClick={() => onSelect(exercise.id)}
+            >
+              <Dumbbell size={17} aria-hidden="true" />
+              <span>
+                <strong>{exercise.name}</strong>
+                <small>{exercise.is_bodyweight ? "Bodyweight" : "Weighted exercise"}</small>
+              </span>
+              <ChevronRight size={17} aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="modal-actions standalone">
+        <button type="button" className="secondary-button" onClick={onClose}>
+          Cancel
+        </button>
+        <button type="button" className="primary-button" onClick={onBrowse}>
+          Browse exercises
+        </button>
+      </div>
     </ModalFrame>
   );
 }
