@@ -1282,7 +1282,7 @@ function WorkoutModal({
               onChange={(event) => setWeight(event.target.value)}
               min="0"
               max="1000"
-              step="0.25"
+              step="any"
               inputMode="decimal"
               enterKeyHint="next"
               placeholder={exercise.is_bodyweight ? "Optional" : "80"}
