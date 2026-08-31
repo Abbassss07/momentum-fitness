@@ -150,10 +150,10 @@ export type CurrentStreak = {
   isAtRisk: boolean;
 };
 
-// Only dates represented by workout_logs are training dates. A streak permits
-// one rest day, so consecutive logged workout dates can be at most two calendar
-// days apart (for example, Monday and Wednesday).
-const MAX_TRAINING_DATE_GAP = 2;
+// Only dates represented by workout_logs are training dates. A streak advances
+// only when there is at least one logged workout on each consecutive calendar
+// day; multiple workouts on the same date still count as one day.
+const MAX_TRAINING_DATE_GAP = 1;
 
 export function currentStreak(
   logs: Iterable<Pick<WorkoutLog, "logged_at">>,
