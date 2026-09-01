@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Dumbbell, Flame, RefreshCw, TrendingUp, Trophy, Users } from "lucide-react";
+import { BarChart3, Dumbbell, Flame, RefreshCw, Trophy, Users } from "lucide-react";
 import { formatVolume, initials } from "@/lib/fitness";
 import {
   fetchLeaderboardData,
@@ -7,7 +7,7 @@ import {
   LeaderboardEntry,
 } from "@/lib/leaderboard";
 
-type LeaderboardView = "volume" | "consistency" | "streak" | "improvement";
+type LeaderboardView = "volume" | "consistency" | "streak";
 type ConsistencyRange = "week" | "month";
 
 const VIEW_DETAILS: Record<
@@ -29,14 +29,8 @@ const VIEW_DETAILS: Record<
   streak: {
     label: "Streak",
     title: "Current training streak",
-    description: "Two rest days are allowed between logged workout days.",
+    description: "Consecutive calendar days with at least one logged workout.",
     icon: Flame,
-  },
-  improvement: {
-    label: "Progress",
-    title: "Training improvement",
-    description: "This week compared with your own prior four-week average.",
-    icon: TrendingUp,
   },
 };
 
@@ -228,10 +222,7 @@ function scoreFor(
       ? entry.weeklyTrainingDays
       : entry.monthlyTrainingDays;
   }
-  if (view === "streak") return entry.currentStreak;
-  return entry.improvementPercent === null
-    ? Number.NEGATIVE_INFINITY
-    : entry.improvementPercent;
+  return entry.currentStreak;
 }
 
 function hasScore(
@@ -243,8 +234,7 @@ function hasScore(
   if (view === "consistency") {
     return scoreFor(entry, view, consistencyRange) > 0;
   }
-  if (view === "streak") return entry.currentStreak > 0;
-  return true;
+  return entry.currentStreak > 0;
 }
 
 function formatScore(
@@ -263,13 +253,6 @@ function formatScore(
     const count = entry.currentStreak;
     return `${count} ${count === 1 ? "day" : "days"}`;
   }
-  if (entry.improvementPercent === null) return "Not enough data yet";
-  const improvement = Math.abs(entry.improvementPercent) < 0.05
-    ? 0
-    : entry.improvementPercent;
-  return `${improvement > 0 ? "+" : ""}${new Intl.NumberFormat("en", {
-    maximumFractionDigits: 1,
-  }).format(improvement)}%`;
 }
 
 function emptyTitle(view: LeaderboardView, consistencyRange: ConsistencyRange) {
