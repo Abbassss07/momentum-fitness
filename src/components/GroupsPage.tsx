@@ -9,11 +9,13 @@ import {
   Clipboard,
   Copy,
   Dumbbell,
+  Pencil,
   Plus,
   RefreshCw,
   ShieldCheck,
   Trash2,
   UserMinus,
+  UserPlus,
   Users,
   X,
 } from "lucide-react";
@@ -27,22 +29,31 @@ import {
   createGroup,
   deleteGroup,
   fetchGroupLeaderboardData,
+  fetchGroupDirectInvites,
   fetchGroupMembers,
   fetchGroups,
+  fetchOwnGroupDirectInvites,
   fetchOwnGroupRequest,
   fetchPendingGroupRequests,
   findGroupByInviteCode,
   removeGroupMember,
+  renameGroup,
   requestToJoinGroup,
+  respondToGroupDirectInvite,
   respondToGroupJoinRequest,
+  sendGroupDirectInvite,
 } from "@/lib/groups";
 import type {
   Group,
+  GroupDirectInvite,
+  OwnGroupDirectInvite,
   GroupJoinRequest,
   GroupJoinRequestStatus,
   GroupLeaderboardData,
   GroupMember,
+  GroupProfile,
 } from "@/lib/groups";
+import { fetchAcceptedFriends } from "@/lib/friends";
 import { initials } from "@/lib/fitness";
 import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
 
@@ -67,12 +78,18 @@ export function GroupsPage({
   const [inviteStatus, setInviteStatus] = useState<GroupJoinRequestStatus | null>(null);
   const [inviteLoading, setInviteLoading] = useState(Boolean(initialInviteCode));
   const [inviteError, setInviteError] = useState("");
+  const [directInvites, setDirectInvites] = useState<OwnGroupDirectInvite[]>([]);
+  const [directInviteBusyId, setDirectInviteBusyId] = useState("");
 
   const loadGroups = useCallback(async () => {
     setLoading(true);
     try {
-      const nextGroups = await fetchGroups();
+      const [nextGroups, nextDirectInvites] = await Promise.all([
+        fetchGroups(),
+        fetchOwnGroupDirectInvites(),
+      ]);
       setGroups(nextGroups);
+      setDirectInvites(nextDirectInvites);
       setError("");
       return nextGroups;
     } catch (caught) {
@@ -85,10 +102,11 @@ export function GroupsPage({
 
   useEffect(() => {
     let ignore = false;
-    fetchGroups()
-      .then((nextGroups) => {
+    Promise.all([fetchGroups(), fetchOwnGroupDirectInvites()])
+      .then(([nextGroups, nextDirectInvites]) => {
         if (ignore) return;
         setGroups(nextGroups);
+        setDirectInvites(nextDirectInvites);
         setError("");
       })
       .catch((caught) => {
@@ -152,6 +170,22 @@ export function GroupsPage({
     }
   }
 
+  async function respondToDirectInvite(
+    invite: OwnGroupDirectInvite,
+    status: "accepted" | "declined",
+  ) {
+    setDirectInviteBusyId(invite.id);
+    try {
+      await respondToGroupDirectInvite(invite.id, status);
+      onNotice(status === "accepted" ? "Group invite accepted" : "Group invite declined");
+      await loadGroups();
+    } catch (caught) {
+      onNotice(messageFrom(caught, "Could not update the group invite."));
+    } finally {
+      setDirectInviteBusyId("");
+    }
+  }
+
   if (initialInviteCode && !invitedMembership) {
     return (
       <InviteJoinView
@@ -174,6 +208,11 @@ export function GroupsPage({
         onDeleted={async () => {
           setSelectedGroupId("");
           await loadGroups();
+        }}
+        onRenamed={(updatedGroup) => {
+          setGroups((current) => current.map((item) => (
+            item.id === updatedGroup.id ? updatedGroup : item
+          )));
         }}
         onNotice={onNotice}
       />
@@ -239,6 +278,32 @@ export function GroupsPage({
           </div>
         ) : null}
       </section>
+
+      {directInvites.filter((invite) => invite.status === "pending").length ? (
+        <section className="journal-section requests-section group-direct-invites" aria-labelledby="direct-group-invites-title">
+          <div className="section-heading">
+            <div>
+              <p className="section-label">Waiting for you</p>
+              <h2 id="direct-group-invites-title">Group invites</h2>
+            </div>
+            <span className="request-count">
+              {directInvites.filter((invite) => invite.status === "pending").length}
+            </span>
+          </div>
+          {directInvites.filter((invite) => invite.status === "pending").map((invite) => (
+            <div className="request-row" key={invite.id}>
+              <div className="friend-identity">
+                <span className="friend-avatar"><Users size={16} /></span>
+                <span><strong>{invite.group_name}</strong><small>Invite from the group owner</small></span>
+              </div>
+              <div className="row-actions">
+                <button type="button" className="icon-text-button accept" disabled={directInviteBusyId === invite.id} onClick={() => void respondToDirectInvite(invite, "accepted")}><Check size={15} />Accept</button>
+                <button type="button" className="icon-text-button" disabled={directInviteBusyId === invite.id} onClick={() => void respondToDirectInvite(invite, "declined")}><X size={15} />Decline</button>
+              </div>
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       {createOpen ? (
         <CreateGroupModal
@@ -316,34 +381,41 @@ function GroupDetail({
   userId,
   onBack,
   onDeleted,
+  onRenamed,
   onNotice,
 }: {
   group: Group;
   userId: string;
   onBack: () => void;
   onDeleted: () => Promise<void>;
+  onRenamed: (group: Group) => void;
   onNotice: (message: string) => void;
 }) {
   const isOwner = group.owner_id === userId;
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [requests, setRequests] = useState<GroupJoinRequest[]>([]);
+  const [sentDirectInvites, setSentDirectInvites] = useState<GroupDirectInvite[]>([]);
   const [leaderboard, setLeaderboard] = useState<GroupLeaderboardData | null>(null);
   const [metric, setMetric] = useState<GroupMetric>("volume");
   const [range, setRange] = useState<ConsistencyRange>("week");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [directInviteOpen, setDirectInviteOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [nextMembers, nextRequests, nextLeaderboard] = await Promise.all([
+      const [nextMembers, nextRequests, nextDirectInvites, nextLeaderboard] = await Promise.all([
         fetchGroupMembers(group.id),
         isOwner ? fetchPendingGroupRequests(group.id) : Promise.resolve([]),
+        isOwner ? fetchGroupDirectInvites(group.id) : Promise.resolve([]),
         fetchGroupLeaderboardData(group.id, userId),
       ]);
       setMembers(nextMembers);
       setRequests(nextRequests);
+      setSentDirectInvites(nextDirectInvites);
       setLeaderboard(nextLeaderboard);
       setError("");
     } catch (caught) {
@@ -358,12 +430,14 @@ function GroupDetail({
     Promise.all([
       fetchGroupMembers(group.id),
       isOwner ? fetchPendingGroupRequests(group.id) : Promise.resolve([]),
+      isOwner ? fetchGroupDirectInvites(group.id) : Promise.resolve([]),
       fetchGroupLeaderboardData(group.id, userId),
     ])
-      .then(([nextMembers, nextRequests, nextLeaderboard]) => {
+      .then(([nextMembers, nextRequests, nextDirectInvites, nextLeaderboard]) => {
         if (ignore) return;
         setMembers(nextMembers);
         setRequests(nextRequests);
+        setSentDirectInvites(nextDirectInvites);
         setLeaderboard(nextLeaderboard);
         setError("");
       })
@@ -421,6 +495,20 @@ function GroupDetail({
     }
   }
 
+  async function rename(name: string) {
+    const updatedGroup = await renameGroup(group.id, name);
+    onRenamed(updatedGroup);
+    setRenameOpen(false);
+    onNotice("Group renamed");
+  }
+
+  async function sendDirectInvite(friendId: string) {
+    await sendGroupDirectInvite(group.id, friendId, userId);
+    setDirectInviteOpen(false);
+    onNotice("Direct group invite sent");
+    await load();
+  }
+
   async function removeGroup() {
     if (!window.confirm(`Delete ${group.name}? This removes the group for every member.`)) return;
     setBusyId("delete-group");
@@ -443,12 +531,25 @@ function GroupDetail({
         <div>
           <p className="section-label">{isOwner ? "You own this group" : "Private squad"}</p>
           <h1>{group.name}</h1>
-          <p>{members.length || leaderboard?.memberCount || 0} members · Invite code {group.invite_code}</p>
+          <p>{members.length || leaderboard?.memberCount || 0} members</p>
         </div>
-        <button type="button" className="secondary-button" onClick={() => void copyInvite()}>
-          <Copy size={15} />Copy invite
-        </button>
+        {isOwner ? <button type="button" className="secondary-button" onClick={() => setRenameOpen(true)}><Pencil size={15} />Rename</button> : null}
       </header>
+
+      <section className="journal-section group-invite-section" aria-labelledby="group-invite-title">
+        <div className="section-heading">
+          <div>
+            <p className="section-label">Invite</p>
+            <h2 id="group-invite-title">Share this group</h2>
+          </div>
+          {isOwner ? <button type="button" className="secondary-button" onClick={() => setDirectInviteOpen(true)}><UserPlus size={15} />Direct invite</button> : null}
+        </div>
+        <p>Anyone with this link can request to join. You can share it with people you trust.</p>
+        <div className="group-invite-link">
+          <code>/join/{group.invite_code}</code>
+          <button type="button" className="secondary-button" onClick={() => void copyInvite()}><Copy size={15} />Copy link</button>
+        </div>
+      </section>
 
       {error ? (
         <div className="leaderboard-empty" role="alert">
@@ -485,6 +586,16 @@ function GroupDetail({
 
       {isOwner ? (
         <div className="groups-manage-grid">
+          <section className="journal-section requests-section" aria-labelledby="group-direct-invites-title">
+            <div className="section-heading"><div><p className="section-label">Owner tools</p><h2 id="group-direct-invites-title">Direct invites</h2></div></div>
+            {sentDirectInvites.length === 0 ? <p className="friend-empty">No direct invites are waiting.</p> : sentDirectInvites.map((invite) => (
+              <div className="request-row" key={invite.id}>
+                <MemberIdentity profile={invite.profile} />
+                <span className="relationship-label">Sent</span>
+              </div>
+            ))}
+          </section>
+
           <section className="journal-section requests-section" aria-labelledby="group-requests-title">
             <div className="section-heading"><div><p className="section-label">Owner tools</p><h2 id="group-requests-title">Join requests</h2></div></div>
             {requests.length === 0 ? <p className="friend-empty">No pending requests.</p> : requests.map((request) => (
@@ -518,6 +629,17 @@ function GroupDetail({
           <button type="button" className="danger-button" disabled={busyId === "delete-group"} onClick={() => void removeGroup()}><Trash2 size={15} />Delete group</button>
         </section>
       ) : null}
+
+      {renameOpen ? <RenameGroupModal group={group} onClose={() => setRenameOpen(false)} onRename={rename} /> : null}
+      {directInviteOpen ? (
+        <DirectInviteModal
+          userId={userId}
+          members={members}
+          pendingInvites={sentDirectInvites}
+          onClose={() => setDirectInviteOpen(false)}
+          onInvite={sendDirectInvite}
+        />
+      ) : null}
     </>
   );
 }
@@ -535,6 +657,122 @@ function MemberIdentity({
       <span className="friend-avatar">{initials(name)}</span>
       <span><strong>{name}</strong><small>{label ?? `@${profile.username}`}</small></span>
     </div>
+  );
+}
+
+function RenameGroupModal({
+  group,
+  onClose,
+  onRename,
+}: {
+  group: Group;
+  onClose: () => void;
+  onRename: (name: string) => Promise<void>;
+}) {
+  const [name, setName] = useState(group.name);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await onRename(name);
+    } catch (caught) {
+      setError(messageFrom(caught, "Could not rename the group."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <ModalFrame title="Rename group" subtitle="Choose a clear name for your squad." onClose={onClose}>
+      <form className="modal-form" onSubmit={submit}>
+        <label>
+          Group name
+          <input value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={80} autoFocus required />
+        </label>
+        {error ? <div className="form-error" role="alert">{error}</div> : null}
+        <div className="modal-actions">
+          <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
+          <button className="primary-button" disabled={busy}>{busy ? "Saving..." : "Save name"}</button>
+        </div>
+      </form>
+    </ModalFrame>
+  );
+}
+
+function DirectInviteModal({
+  userId,
+  members,
+  pendingInvites,
+  onClose,
+  onInvite,
+}: {
+  userId: string;
+  members: GroupMember[];
+  pendingInvites: GroupDirectInvite[];
+  onClose: () => void;
+  onInvite: (friendId: string) => Promise<void>;
+}) {
+  const [friends, setFriends] = useState<GroupProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let ignore = false;
+    fetchAcceptedFriends(userId)
+      .then((nextFriends) => {
+        if (!ignore) setFriends(nextFriends);
+      })
+      .catch((caught) => {
+        if (!ignore) setError(messageFrom(caught, "Could not load your friends."));
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [userId]);
+
+  const memberIds = new Set(members.map((member) => member.user_id));
+  const pendingInviteIds = new Set(pendingInvites.map((invite) => invite.invited_user_id));
+  const availableFriends = friends.filter((friend) => (
+    !memberIds.has(friend.id) && !pendingInviteIds.has(friend.id)
+  ));
+
+  async function invite(friend: GroupProfile) {
+    setBusyId(friend.id);
+    setError("");
+    try {
+      await onInvite(friend.id);
+    } catch (caught) {
+      setError(messageFrom(caught, "Could not send the direct invite."));
+      setBusyId("");
+    }
+  }
+
+  return (
+    <ModalFrame title="Direct invite" subtitle="Invite an accepted friend. They can join without waiting for approval." onClose={onClose}>
+      <div className="direct-invite-picker">
+        {loading ? <p className="friend-empty">Loading your friends...</p> : null}
+        {!loading && error ? <div className="form-error" role="alert">{error}</div> : null}
+        {!loading && !error && availableFriends.length === 0 ? (
+          <p className="friend-empty">All of your accepted friends are already members or have an invite waiting.</p>
+        ) : null}
+        {!loading && availableFriends.map((friend) => (
+          <div className="request-row" key={friend.id}>
+            <MemberIdentity profile={friend} />
+            <button type="button" className="icon-text-button accept" disabled={Boolean(busyId)} onClick={() => void invite(friend)}>
+              <UserPlus size={15} />{busyId === friend.id ? "Sending..." : "Invite"}
+            </button>
+          </div>
+        ))}
+      </div>
+    </ModalFrame>
   );
 }
 

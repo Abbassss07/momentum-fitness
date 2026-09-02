@@ -37,7 +37,29 @@ export type GroupJoinRequest = {
   profile: GroupProfile;
 };
 
+export type GroupDirectInviteStatus = "pending" | "accepted" | "declined";
+
+export type GroupDirectInvite = {
+  id: string;
+  group_id: string;
+  invited_user_id: string;
+  invited_by: string;
+  status: GroupDirectInviteStatus;
+  created_at: string;
+  updated_at: string;
+  profile: GroupProfile;
+};
+
+export type OwnGroupDirectInvite = {
+  id: string;
+  group_id: string;
+  group_name: string;
+  status: GroupDirectInviteStatus;
+  created_at: string;
+};
+
 type GroupJoinRequestRecord = Omit<GroupJoinRequest, "profile">;
+type GroupDirectInviteRecord = Omit<GroupDirectInvite, "profile">;
 
 type GroupLeaderboardRow = {
   member_id: string;
@@ -66,6 +88,17 @@ export async function createGroup(userId: string, name: string): Promise<Group> 
   const { data, error } = await supabase
     .from("groups")
     .insert({ name: name.trim(), owner_id: userId })
+    .select("id,name,owner_id,invite_code,created_at")
+    .single();
+  if (error) throw error;
+  return data as Group;
+}
+
+export async function renameGroup(groupId: string, name: string): Promise<Group> {
+  const { data, error } = await supabase
+    .from("groups")
+    .update({ name: name.trim() })
+    .eq("id", groupId)
     .select("id,name,owner_id,invite_code,created_at")
     .single();
   if (error) throw error;
@@ -144,6 +177,59 @@ export async function respondToGroupJoinRequest(
     .update({ status })
     .eq("group_id", groupId)
     .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function fetchGroupDirectInvites(
+  groupId: string,
+): Promise<GroupDirectInvite[]> {
+  const { data, error } = await supabase
+    .from("group_direct_invites")
+    .select("id,group_id,invited_user_id,invited_by,status,created_at,updated_at")
+    .eq("group_id", groupId)
+    .eq("status", "pending")
+    .order("created_at");
+  if (error) throw error;
+
+  const invites = (data ?? []) as GroupDirectInviteRecord[];
+  const profiles = await fetchProfiles(invites.map((invite) => invite.invited_user_id));
+  return invites.map((invite) => ({
+    ...invite,
+    profile: profileOrFallback(profiles, invite.invited_user_id),
+  }));
+}
+
+export async function fetchOwnGroupDirectInvites(): Promise<OwnGroupDirectInvite[]> {
+  const { data, error } = await supabase
+    .from("group_direct_invites")
+    .select("id,group_id,group_name,status,created_at")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as OwnGroupDirectInvite[];
+}
+
+export async function sendGroupDirectInvite(
+  groupId: string,
+  invitedUserId: string,
+  invitedBy: string,
+) {
+  const { error } = await supabase.from("group_direct_invites").insert({
+    group_id: groupId,
+    invited_user_id: invitedUserId,
+    invited_by: invitedBy,
+  });
+  if (error) throw error;
+}
+
+export async function respondToGroupDirectInvite(
+  inviteId: string,
+  status: "accepted" | "declined",
+) {
+  const { error } = await supabase
+    .from("group_direct_invites")
+    .update({ status })
+    .eq("id", inviteId);
   if (error) throw error;
 }
 
