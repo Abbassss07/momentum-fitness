@@ -7,8 +7,8 @@ import {
   LeaderboardEntry,
 } from "@/lib/leaderboard";
 
-type LeaderboardView = "volume" | "consistency" | "streak";
-type ConsistencyRange = "week" | "month";
+export type LeaderboardView = "volume" | "consistency" | "streak";
+export type ConsistencyRange = "week" | "month";
 
 const VIEW_DETAILS: Record<
   LeaderboardView,
@@ -76,7 +76,6 @@ export function LeaderboardPage({ userId }: { userId: string }) {
     () => rankEntries(data?.entries ?? [], view, consistencyRange),
     [consistencyRange, data, view],
   );
-  const hasData = rows.some((row) => hasScore(row, view, consistencyRange));
   const details = VIEW_DETAILS[view];
   const ViewIcon = details.icon;
 
@@ -162,44 +161,66 @@ export function LeaderboardPage({ userId }: { userId: string }) {
           </div>
         ) : null}
 
-        {!loading && !error && !hasData ? (
-          <div className="leaderboard-empty">
-            <Trophy size={22} aria-hidden="true" />
-            <strong>{emptyTitle(view, consistencyRange)}</strong>
-            <p>{emptyDescription(view, consistencyRange)}</p>
-          </div>
-        ) : null}
-
-        {!loading && !error && hasData ? (
-          <ol className="leaderboard-table">
-            {rows.map((row, index) => (
-              <li
-                key={row.userId}
-                className={row.isCurrentUser ? "current" : ""}
-              >
-                <span className="leaderboard-rank" aria-label={`Rank ${index + 1}`}>
-                  {index + 1}
-                </span>
-                <span className="friend-avatar" aria-hidden="true">
-                  {initials(row.displayName)}
-                </span>
-                <span className="leaderboard-person">
-                  <strong>{row.displayName}</strong>
-                  <small>{row.isCurrentUser ? "You" : "Friend"}</small>
-                </span>
-                <span className="leaderboard-score">
-                  {formatScore(row, view, consistencyRange)}
-                </span>
-              </li>
-            ))}
-          </ol>
+        {!loading && !error ? (
+          <LeaderboardRows
+            rows={rows}
+            view={view}
+            consistencyRange={consistencyRange}
+            peerLabel="Friend"
+          />
         ) : null}
       </section>
     </>
   );
 }
 
-function rankEntries(
+export function LeaderboardRows({
+  rows,
+  view,
+  consistencyRange,
+  peerLabel,
+}: {
+  rows: LeaderboardEntry[];
+  view: LeaderboardView;
+  consistencyRange: ConsistencyRange;
+  peerLabel: string;
+}) {
+  const hasData = rows.some((row) => hasScore(row, view, consistencyRange));
+
+  if (!hasData) {
+    return (
+      <div className="leaderboard-empty">
+        <Trophy size={22} aria-hidden="true" />
+        <strong>{emptyTitle(view, consistencyRange)}</strong>
+        <p>{emptyDescription(view, consistencyRange)}</p>
+      </div>
+    );
+  }
+
+  return (
+    <ol className="leaderboard-table">
+      {rows.map((row, index) => (
+        <li key={row.userId} className={row.isCurrentUser ? "current" : ""}>
+          <span className="leaderboard-rank" aria-label={`Rank ${index + 1}`}>
+            {index + 1}
+          </span>
+          <span className="friend-avatar" aria-hidden="true">
+            {initials(row.displayName)}
+          </span>
+          <span className="leaderboard-person">
+            <strong>{row.displayName}</strong>
+            <small>{row.isCurrentUser ? "You" : peerLabel}</small>
+          </span>
+          <span className="leaderboard-score">
+            {formatScore(row, view, consistencyRange)}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function rankEntries(
   entries: LeaderboardEntry[],
   view: LeaderboardView,
   consistencyRange: ConsistencyRange,

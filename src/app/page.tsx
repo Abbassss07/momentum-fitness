@@ -7,7 +7,7 @@ import { AuthScreen } from "@/components/AuthScreen";
 import { FitnessApp } from "@/components/FitnessApp";
 import { supabase } from "@/lib/supabase";
 
-export default function Home() {
+export function MomentumHome({ initialInviteCode }: { initialInviteCode?: string }) {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -37,7 +37,11 @@ export default function Home() {
   }
 
   if (!user) return <AuthScreen onAuthenticated={setUser} />;
-  return <FitnessApp user={user} />;
+  return <FitnessApp user={user} initialInviteCode={initialInviteCode} />;
+}
+
+export default function Home() {
+  return <MomentumHome />;
 }
 
 

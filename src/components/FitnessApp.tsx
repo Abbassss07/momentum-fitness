@@ -23,13 +23,14 @@ import {
   Settings,
   Trophy,
   Trash2,
-  TrendingUp,
   Users,
+  UsersRound,
   X,
 } from "lucide-react";
 import { Brand } from "@/components/AuthScreen";
 import { ProgressChart, RangeSelect } from "@/components/ProgressChart";
 import { FriendsPage } from "@/components/FriendsPage";
+import { GroupsPage } from "@/components/GroupsPage";
 import { LeaderboardPage } from "@/components/LeaderboardPage";
 import { ProfileSettings } from "@/components/ProfileSettings";
 import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
@@ -48,14 +49,15 @@ import {
 } from "@/lib/fitness";
 import { supabase } from "@/lib/supabase";
 
-type Section = "dashboard" | "workouts" | "friends" | "leaderboard" | "settings";
+type Section = "dashboard" | "workouts" | "friends" | "groups" | "leaderboard" | "settings";
 
 type FitnessAppProps = {
   user: User;
+  initialInviteCode?: string;
 };
 
-export function FitnessApp({ user }: FitnessAppProps) {
-  const [section, setSection] = useState<Section>("dashboard");
+export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
+  const [section, setSection] = useState<Section>(initialInviteCode ? "groups" : "dashboard");
   const [bodyParts, setBodyParts] = useState<BodyPart[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [workouts, setWorkouts] = useState<WorkoutLog[]>([]);
@@ -127,11 +129,15 @@ export function FitnessApp({ user }: FitnessAppProps) {
   }, [user.id]);
 
   useEffect(() => {
+    // Initial Supabase synchronization is intentionally tied to the active user.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
   }, [loadData]);
 
   useEffect(() => {
     if (!selectedExerciseId && exercises.length) {
+      // Default the picker after the asynchronous exercise list arrives.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedExerciseId(exercises[0].id);
     }
   }, [exercises, selectedExerciseId]);
@@ -244,9 +250,11 @@ export function FitnessApp({ user }: FitnessAppProps) {
         ? "Exercises"
         : section === "friends"
           ? "Friends"
-          : section === "leaderboard"
-            ? "Leaderboard"
-            : "Profile";
+          : section === "groups"
+            ? "Groups"
+            : section === "leaderboard"
+              ? "Leaderboard"
+              : "Profile";
 
   return (
     <main className="app-shell">
@@ -281,6 +289,12 @@ export function FitnessApp({ user }: FitnessAppProps) {
             icon={<Users size={18} />}
             label="Friends"
             onClick={() => navigate("friends")}
+          />
+          <NavButton
+            active={section === "groups"}
+            icon={<UsersRound size={18} />}
+            label="Groups"
+            onClick={() => navigate("groups")}
           />
           <NavButton
             active={section === "leaderboard"}
@@ -338,7 +352,7 @@ export function FitnessApp({ user }: FitnessAppProps) {
             <span>{sectionTitle}</span>
             <small>Momentum</small>
           </div>
-          {section !== "friends" ? (
+          {section !== "friends" && section !== "groups" ? (
             <button
               type="button"
               className="primary-button topbar-action"
@@ -379,6 +393,8 @@ export function FitnessApp({ user }: FitnessAppProps) {
             />
           ) : section === "friends" ? (
             <FriendsPage user={user} exercises={exercises} onNotice={setNotice} />
+          ) : section === "groups" ? (
+            <GroupsPage userId={user.id} initialInviteCode={initialInviteCode} onNotice={setNotice} />
           ) : section === "leaderboard" ? (
             <LeaderboardPage userId={user.id} />
           ) : (
@@ -435,6 +451,12 @@ export function FitnessApp({ user }: FitnessAppProps) {
           icon={<Users size={19} />}
           label="Friends"
           onClick={() => navigate("friends")}
+        />
+        <NavButton
+          active={section === "groups"}
+          icon={<UsersRound size={19} />}
+          label="Groups"
+          onClick={() => navigate("groups")}
         />
         <NavButton
           active={section === "leaderboard"}
@@ -715,7 +737,11 @@ function ExercisesPage({
   const [range, setRange] = useState<RangeKey>("3M");
 
   useEffect(() => {
-    if (selected?.body_part_id) setPart(selected.body_part_id);
+    if (selected?.body_part_id) {
+      // Keep the visible category synchronized with selections made elsewhere.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPart(selected.body_part_id);
+    }
   }, [selected?.body_part_id]);
 
   const sessionCounts = useMemo(() => {

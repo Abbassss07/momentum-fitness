@@ -1480,6 +1480,207 @@ button:disabled {
 
 /* Friends */
 
+/* Groups */
+
+.groups-section {
+  max-width: 820px;
+  padding: 24px;
+}
+
+.groups-mobile-create {
+  display: none;
+}
+
+.group-list {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.group-list > button {
+  width: 100%;
+  min-height: 70px;
+  padding: 10px 4px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.group-list > button:hover {
+  background: var(--surface-muted);
+}
+
+.group-avatar,
+.invite-icon {
+  display: grid;
+  place-items: center;
+  border: 1px solid #cbdad1;
+  border-radius: 9px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.group-avatar {
+  width: 38px;
+  height: 38px;
+}
+
+.group-list > button > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.group-list strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-list small,
+.group-code {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.group-code {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: .04em;
+}
+
+.invite-card {
+  max-width: 620px;
+  min-height: 350px;
+  padding: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.invite-card .leaderboard-skeleton {
+  width: 100%;
+}
+
+.invite-icon {
+  width: 48px;
+  height: 48px;
+}
+
+.invite-card h2 {
+  margin: 18px 0 20px;
+  font-size: 24px;
+  letter-spacing: -.03em;
+}
+
+.invite-card > .text-button {
+  margin-top: 18px;
+}
+
+.status-note {
+  padding: 11px 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #cbdad1;
+  border-radius: 8px;
+  color: var(--accent-hover);
+  background: var(--accent-soft);
+  font-size: 11px;
+}
+
+.status-note.declined {
+  border-color: #e3cdca;
+  color: #8b4c45;
+  background: #faf0ee;
+}
+
+.group-detail-header {
+  max-width: 820px;
+}
+
+.groups-manage-grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(360px, 1.1fr);
+  gap: 18px;
+}
+
+.groups-manage-grid .friends-list-section {
+  margin-bottom: 0;
+}
+
+.icon-text-button.accept {
+  color: var(--accent);
+}
+
+.icon-text-button.danger,
+.danger-button {
+  color: #934a43;
+}
+
+.group-danger-zone {
+  max-width: 820px;
+  margin-top: 18px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid #e3cdca;
+  border-radius: var(--radius);
+  background: #faf6f4;
+}
+
+.group-danger-zone strong {
+  font-size: 12px;
+}
+
+.group-danger-zone p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.danger-button {
+  min-height: 44px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  border: 1px solid #d9b7b2;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 630;
+  cursor: pointer;
+}
+
+.danger-button:hover {
+  background: #f8e9e6;
+}
+
+.danger-button:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
 .friends-manage-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
@@ -2487,7 +2688,7 @@ button:disabled {
     inset: auto 0 0;
     z-index: 22;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     border-top: 1px solid var(--border);
     background: var(--surface-strong);
   }
@@ -2525,7 +2726,8 @@ button:disabled {
   .dashboard-primary,
   .dashboard-secondary,
   .friends-layout,
-  .friends-manage-grid {
+  .friends-manage-grid,
+  .groups-manage-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2671,7 +2873,14 @@ button:disabled {
   .friend-search,
   .requests-section,
   .friends-list-section,
-  .friend-summary { padding: 20px; }
+  .friend-summary,
+  .groups-section { padding: 20px; }
+
+  .groups-mobile-create { display: inline-flex; }
+  .group-detail-header { gap: 16px; }
+  .group-code { display: none; }
+  .invite-card { min-height: 310px; padding: 28px 20px; }
+  .group-danger-zone { align-items: flex-start; flex-direction: column; }
 
   .profile-settings { padding: 20px; }
 

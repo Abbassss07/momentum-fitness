@@ -22,6 +22,17 @@ type WorkoutRecord = {
   weight_kg: number | null;
 };
 
+type LeaderboardPeriod = {
+  start: string;
+  end: string;
+};
+
+export type VolumeConsistencyScores = {
+  weeklyVolume: number;
+  weeklyTrainingDays: number;
+  monthlyTrainingDays: number;
+};
+
 export type LeaderboardEntry = {
   userId: string;
   displayName: string;
@@ -36,6 +47,25 @@ export type LeaderboardData = {
   entries: LeaderboardEntry[];
   friendCount: number;
 };
+
+export function volumeConsistencyScores(
+  workouts: WorkoutRecord[],
+  week: LeaderboardPeriod,
+  month: LeaderboardPeriod,
+): VolumeConsistencyScores {
+  const weeklyWorkouts = workouts.filter(
+    (workout) => workout.logged_at >= week.start && workout.logged_at <= week.end,
+  );
+  const monthlyWorkouts = workouts.filter(
+    (workout) => workout.logged_at >= month.start && workout.logged_at <= month.end,
+  );
+
+  return {
+    weeklyVolume: totalTrainingVolume(weeklyWorkouts),
+    weeklyTrainingDays: distinctTrainingDays(weeklyWorkouts),
+    monthlyTrainingDays: distinctTrainingDays(monthlyWorkouts),
+  };
+}
 
 export async function fetchLeaderboardData(userId: string): Promise<LeaderboardData> {
   const friends = await fetchAcceptedFriends(userId);
@@ -106,20 +136,12 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
     entries: participantIds.map((participantId) => {
       const participantWorkouts = workoutsByUser.get(participantId) ?? [];
       const trainingHistory = streakDatesByUser.get(participantId) ?? [];
-      const weeklyWorkouts = participantWorkouts.filter(
-        (workout) => workout.logged_at >= week.start && workout.logged_at <= week.end,
-      );
-      const monthlyWorkouts = participantWorkouts.filter(
-        (workout) => workout.logged_at >= month.start && workout.logged_at <= month.end,
-      );
-      const weeklyVolume = totalTrainingVolume(weeklyWorkouts);
+      const scores = volumeConsistencyScores(participantWorkouts, week, month);
       return {
         userId: participantId,
         displayName: names.get(participantId) ?? "You",
         isCurrentUser: participantId === userId,
-        weeklyVolume,
-        weeklyTrainingDays: distinctTrainingDays(weeklyWorkouts),
-        monthlyTrainingDays: distinctTrainingDays(monthlyWorkouts),
+        ...scores,
         currentStreak: currentStreak(trainingHistory).days,
       };
     }),
