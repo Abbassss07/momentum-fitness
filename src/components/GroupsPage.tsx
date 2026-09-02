@@ -44,6 +44,7 @@ import type {
   GroupMember,
 } from "@/lib/groups";
 import { initials } from "@/lib/fitness";
+import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
 
 type GroupMetric = Extract<LeaderboardView, "volume" | "consistency">;
 
@@ -579,13 +580,82 @@ function CreateGroupModal({
   );
 }
 
-function ModalFrame({ title, subtitle, onClose, children }: { title: string; subtitle: string; onClose: () => void; children: ReactNode }) {
+function ModalFrame({
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  useEffect(() => {
+    const rootStyle = document.documentElement.style;
+    const previousKeyboardInset = rootStyle.getPropertyValue("--keyboard-inset");
+
+    function updateKeyboardInset() {
+      const viewport = window.visualViewport;
+      const keyboardInset = viewport
+        ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+        : 0;
+      rootStyle.setProperty("--keyboard-inset", `${keyboardInset}px`);
+    }
+
+    updateKeyboardInset();
+    window.visualViewport?.addEventListener("resize", updateKeyboardInset);
+    window.visualViewport?.addEventListener("scroll", updateKeyboardInset);
+
+    return () => {
+      if (previousKeyboardInset) {
+        rootStyle.setProperty("--keyboard-inset", previousKeyboardInset);
+      } else {
+        rootStyle.removeProperty("--keyboard-inset");
+      }
+      window.visualViewport?.removeEventListener("resize", updateKeyboardInset);
+      window.visualViewport?.removeEventListener("scroll", updateKeyboardInset);
+    };
+  }, []);
+
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="group-modal-title">
+    <div
+      className="modal-backdrop"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="group-modal-title"
+        aria-describedby="group-modal-description"
+        onFocusCapture={scrollFocusedFieldIntoView}
+      >
         <div className="modal-head">
-          <div><h2 id="group-modal-title">{title}</h2><p>{subtitle}</p></div>
-          <button type="button" onClick={onClose} aria-label="Close dialog"><X size={19} /></button>
+          <div>
+            <h2 id="group-modal-title">{title}</h2>
+            <p id="group-modal-description">{subtitle}</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close dialog">
+            <X size={19} />
+          </button>
         </div>
         {children}
       </section>
