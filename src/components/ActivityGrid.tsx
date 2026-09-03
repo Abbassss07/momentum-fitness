@@ -22,12 +22,21 @@ function formatDate(date: string) {
   }).format(new Date(`${date}T12:00:00`));
 }
 
+function formatMonth(date: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${date}T12:00:00`));
+}
+
 /**
  * A serializable, server-compatible display component. It can be rendered in
  * a Server Component with RPC data or directly within Momentum's client dashboard.
  */
 export function ActivityGrid({ activity }: ActivityGridProps) {
   const activeDays = activity.filter((day) => day.exercise_count > 0).length;
+  const monthTitle = activity[0] ? formatMonth(activity[0].activity_date) : "This month";
+  const columnCount = Math.max(1, Math.ceil(activity.length / 3));
 
   return (
     <section
@@ -43,7 +52,7 @@ export function ActivityGrid({ activity }: ActivityGridProps) {
             id="activity-grid-title"
             className="m-0 mt-1 text-base font-semibold tracking-tight text-neutral-950 dark:text-neutral-50"
           >
-            Last 30 days
+            {monthTitle}
           </h2>
         </div>
         <p className="m-0 pt-1 text-right text-xs text-neutral-600 dark:text-neutral-400">
@@ -52,8 +61,11 @@ export function ActivityGrid({ activity }: ActivityGridProps) {
         </p>
       </div>
 
-      <div className="overflow-x-auto pb-1" aria-label="30-day workout activity heatmap">
-        <div className="grid min-w-[510px] grid-cols-[repeat(30,minmax(0,1fr))] gap-1.5">
+      <div aria-label={`${monthTitle} workout activity heatmap`}>
+        <div
+          className="grid gap-1.5"
+          style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+        >
           {activity.map((day) => {
             const count = Number(day.exercise_count);
             const level = Math.min(3, Math.max(0, Number(day.activity_level)));
