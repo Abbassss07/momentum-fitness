@@ -50,6 +50,7 @@ import {
 import { supabase } from "@/lib/supabase";
 
 type Section = "dashboard" | "workouts" | "friends" | "groups" | "leaderboard" | "settings";
+type Theme = "light" | "dark";
 
 type FitnessAppProps = {
   user: User;
@@ -77,6 +78,16 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
   const [customModal, setCustomModal] = useState(false);
   const [editingWorkout, setEditingWorkout] = useState<WorkoutLog | null>(null);
   const [selectedExerciseId, setSelectedExerciseId] = useState("");
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "light";
+    return window.localStorage.getItem("momentum-theme") === "dark" ? "dark" : "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    window.localStorage.setItem("momentum-theme", theme);
+  }, [theme]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -402,6 +413,8 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
               userId={user.id}
               username={profileUsername}
               displayName={profileDisplayName}
+              theme={theme}
+              onThemeChange={setTheme}
               onSaved={(profile) => {
                 setProfileUsername(profile.username);
                 setProfileDisplayName(profile.displayName);

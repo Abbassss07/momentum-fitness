@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Check, Save } from "lucide-react";
+import { Check, Moon, Save, Sun } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
 
@@ -9,6 +9,8 @@ type ProfileSettingsProps = {
   userId: string;
   username: string;
   displayName: string;
+  theme: "light" | "dark";
+  onThemeChange: (theme: "light" | "dark") => void;
   onSaved: (profile: { username: string; displayName: string }) => void;
   onNotice: (message: string) => void;
 };
@@ -17,6 +19,8 @@ export function ProfileSettings({
   userId,
   username: savedUsername,
   displayName: savedDisplayName,
+  theme,
+  onThemeChange,
   onSaved,
   onNotice,
 }: ProfileSettingsProps) {
@@ -175,6 +179,44 @@ export function ProfileSettings({
             </button>
           </div>
         </form>
+      </section>
+
+      <section className="journal-section profile-settings appearance-settings" aria-labelledby="appearance-title">
+        <div className="section-heading">
+          <div>
+            <p className="section-label">Appearance</p>
+            <h2 id="appearance-title">Interface theme</h2>
+          </div>
+        </div>
+        <p className="appearance-copy">
+          Choose the working environment that is easiest on your eyes. Your choice is saved on this device.
+        </p>
+        <div className="theme-options" role="group" aria-label="Interface theme">
+          <button
+            type="button"
+            className={theme === "light" ? "theme-option active" : "theme-option"}
+            aria-pressed={theme === "light"}
+            onClick={() => onThemeChange("light")}
+          >
+            <Sun size={17} aria-hidden="true" />
+            <span>
+              <strong>Light</strong>
+              <small>Bright, paper-like workspace</small>
+            </span>
+          </button>
+          <button
+            type="button"
+            className={theme === "dark" ? "theme-option active" : "theme-option"}
+            aria-pressed={theme === "dark"}
+            onClick={() => onThemeChange("dark")}
+          >
+            <Moon size={17} aria-hidden="true" />
+            <span>
+              <strong>Dark</strong>
+              <small>Low-light, high-contrast workspace</small>
+            </span>
+          </button>
+        </div>
       </section>
     </>
   );
