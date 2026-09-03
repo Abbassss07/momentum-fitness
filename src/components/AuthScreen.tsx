@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { ArrowRight, Check, TrendingUp } from "lucide-react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 export function AuthScreen({
@@ -192,7 +193,7 @@ export function AuthScreen({
           </form>
 
           <p className="privacy-note">
-            Secured with Supabase authentication and private row-level access.
+            By continuing, you agree to Momentum&apos;s <Link href="/terms">Terms of Use</Link> and acknowledge the <Link href="/privacy">Privacy Policy</Link>.
           </p>
         </div>
       </section>

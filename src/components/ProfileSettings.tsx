@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Check, KeyRound, Moon, Save, Sun } from "lucide-react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
 
@@ -357,6 +358,22 @@ export function ProfileSettings({
               <small>Low-light, high-contrast workspace</small>
             </span>
           </button>
+        </div>
+      </section>
+
+      <section className="journal-section profile-settings legal-settings" aria-labelledby="legal-title">
+        <div className="section-heading">
+          <div>
+            <p className="section-label">Legal</p>
+            <h2 id="legal-title">Your privacy and terms</h2>
+          </div>
+        </div>
+        <p className="legal-settings-copy">
+          Read how Momentum handles fitness, social, and account data.
+        </p>
+        <div className="legal-settings-links">
+          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/terms">Terms of Use</Link>
         </div>
       </section>
     </>
