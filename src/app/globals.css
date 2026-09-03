@@ -3623,6 +3623,33 @@ html[data-theme="dark"] .primary-button {
   line-height: 1.4;
 }
 
+.detail-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.exercise-remove-button {
+  color: var(--ink-soft);
+}
+
+.removed-exercise-list > .request-row > span {
+  display: grid;
+  gap: 3px;
+}
+
+.removed-exercise-list strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.removed-exercise-list small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
 html[data-theme="dark"] .chart-grid-line {
   stroke: #2c2e2b;
 }

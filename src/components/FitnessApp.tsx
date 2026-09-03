@@ -61,6 +61,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
   const [section, setSection] = useState<Section>(initialInviteCode ? "groups" : "dashboard");
   const [bodyParts, setBodyParts] = useState<BodyPart[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [hiddenExerciseIds, setHiddenExerciseIds] = useState<Set<string>>(new Set());
   const [workouts, setWorkouts] = useState<WorkoutLog[]>([]);
   const [weights, setWeights] = useState<BodyWeightLog[]>([]);
   const [profileUsername, setProfileUsername] = useState(
@@ -91,7 +92,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [partsResult, exercisesResult, workoutsResult, weightsResult, profileResult] =
+    const [partsResult, exercisesResult, workoutsResult, weightsResult, profileResult, hiddenExercisesResult] =
       await Promise.all([
         supabase.from("body_parts").select("*").order("sort_order"),
         supabase.from("exercises").select("*").order("name"),
@@ -110,6 +111,10 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
           .select("username,display_name")
           .eq("id", user.id)
           .single(),
+        supabase
+          .from("hidden_exercises")
+          .select("exercise_id")
+          .eq("user_id", user.id),
       ]);
 
     const firstError =
@@ -117,11 +122,15 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
       exercisesResult.error ||
       workoutsResult.error ||
       weightsResult.error ||
-      profileResult.error;
+      profileResult.error ||
+      hiddenExercisesResult.error;
 
     if (firstError) setNotice(firstError.message);
     setBodyParts((partsResult.data as BodyPart[]) ?? []);
     setExercises((exercisesResult.data as Exercise[]) ?? []);
+    setHiddenExerciseIds(
+      new Set((hiddenExercisesResult.data ?? []).map((item) => item.exercise_id)),
+    );
     setWorkouts(
       ((workoutsResult.data as WorkoutLog[]) ?? []).map((item) => ({
         ...item,
@@ -145,13 +154,18 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
     loadData();
   }, [loadData]);
 
+  const visibleExercises = useMemo(
+    () => exercises.filter((exercise) => !hiddenExerciseIds.has(exercise.id)),
+    [exercises, hiddenExerciseIds],
+  );
+
   useEffect(() => {
-    if (!selectedExerciseId && exercises.length) {
+    if (!selectedExerciseId && visibleExercises.length) {
       // Default the picker after the asynchronous exercise list arrives.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedExerciseId(exercises[0].id);
+      setSelectedExerciseId(visibleExercises[0].id);
     }
-  }, [exercises, selectedExerciseId]);
+  }, [visibleExercises, selectedExerciseId]);
 
   useEffect(() => {
     if (!notice) return;
@@ -240,6 +254,51 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
     setNotice("Custom exercise added");
     await loadData();
     setSelectedExerciseId(data.id);
+  }
+
+  async function hideExercise(exercise: Exercise) {
+    if (!window.confirm(`Remove ${exercise.name} from your exercise library? Your logged workouts will be kept.`)) {
+      return;
+    }
+
+    const { error } = await supabase.from("hidden_exercises").insert({
+      user_id: user.id,
+      exercise_id: exercise.id,
+    });
+
+    if (error) {
+      setNotice(error.message);
+      return;
+    }
+
+    setHiddenExerciseIds((current) => new Set([...current, exercise.id]));
+    if (selectedExerciseId === exercise.id) {
+      setSelectedExerciseId(
+        visibleExercises.find((item) => item.id !== exercise.id)?.id ?? "",
+      );
+    }
+    setNotice("Exercise removed from your library");
+  }
+
+  async function restoreExercise(exerciseId: string) {
+    const { error } = await supabase
+      .from("hidden_exercises")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("exercise_id", exerciseId);
+
+    if (error) {
+      setNotice(error.message);
+      return;
+    }
+
+    setHiddenExerciseIds((current) => {
+      const next = new Set(current);
+      next.delete(exerciseId);
+      return next;
+    });
+    setSelectedExerciseId(exerciseId);
+    setNotice("Exercise restored to your library");
   }
 
   async function deleteWorkout(id: string) {
@@ -393,7 +452,9 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
           ) : section === "workouts" ? (
             <ExercisesPage
               bodyParts={bodyParts}
-              exercises={exercises}
+              exercises={visibleExercises}
+              allExercises={exercises}
+              hiddenExercises={exercises.filter((exercise) => hiddenExerciseIds.has(exercise.id))}
               workouts={workouts}
               selectedExerciseId={selectedExerciseId}
               onSelect={setSelectedExerciseId}
@@ -401,6 +462,8 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
               onEdit={(log) => beginWorkout(log.exercise_id, log)}
               onDelete={deleteWorkout}
               onCustom={() => setCustomModal(true)}
+              onRemove={hideExercise}
+              onRestore={restoreExercise}
             />
           ) : section === "friends" ? (
             <FriendsPage user={user} exercises={exercises} onNotice={setNotice} />
@@ -502,7 +565,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
       ) : null}
       {workoutPicker ? (
         <WorkoutPicker
-          exercises={exercises}
+          exercises={visibleExercises}
           workouts={workouts}
           onClose={() => setWorkoutPicker(false)}
           onSelect={(exerciseId) => {
@@ -724,6 +787,8 @@ function Dashboard({
 function ExercisesPage({
   bodyParts,
   exercises,
+  allExercises,
+  hiddenExercises,
   workouts,
   selectedExerciseId,
   onSelect,
@@ -731,9 +796,13 @@ function ExercisesPage({
   onEdit,
   onDelete,
   onCustom,
+  onRemove,
+  onRestore,
 }: {
   bodyParts: BodyPart[];
   exercises: Exercise[];
+  allExercises: Exercise[];
+  hiddenExercises: Exercise[];
   workouts: WorkoutLog[];
   selectedExerciseId: string;
   onSelect: (id: string) => void;
@@ -741,13 +810,19 @@ function ExercisesPage({
   onEdit: (log: WorkoutLog) => void;
   onDelete: (id: string) => void;
   onCustom: () => void;
+  onRemove: (exercise: Exercise) => Promise<void>;
+  onRestore: (exerciseId: string) => Promise<void>;
 }) {
-  const selected = exercises.find((item) => item.id === selectedExerciseId);
+  const selected = allExercises.find((item) => item.id === selectedExerciseId);
+  const selectedIsHidden = Boolean(
+    selected && hiddenExercises.some((exercise) => exercise.id === selected.id),
+  );
   const [part, setPart] = useState(
     selected?.body_part_id ?? bodyParts[0]?.id ?? "",
   );
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<RangeKey>("3M");
+  const [removedOpen, setRemovedOpen] = useState(false);
 
   useEffect(() => {
     if (selected?.body_part_id) {
@@ -814,10 +889,17 @@ function ExercisesPage({
           <h1>Exercise progress</h1>
           <p>Choose a movement to review its history and log your next set.</p>
         </div>
-        <button type="button" className="secondary-button" onClick={onCustom}>
-          <Plus size={16} />
-          Custom exercise
-        </button>
+        <div className="page-actions">
+          {hiddenExercises.length ? (
+            <button type="button" className="secondary-button" onClick={() => setRemovedOpen(true)}>
+              Removed ({hiddenExercises.length})
+            </button>
+          ) : null}
+          <button type="button" className="secondary-button" onClick={onCustom}>
+            <Plus size={16} />
+            Custom exercise
+          </button>
+        </div>
       </header>
 
       <div className="exercise-layout">
@@ -896,14 +978,36 @@ function ExercisesPage({
                   </p>
                   <h2>{selected.name}</h2>
                 </div>
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => onLog(selected.id)}
-                >
-                  <Plus size={16} />
-                  Log set
-                </button>
+                <div className="detail-actions">
+                  {selectedIsHidden ? (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => void onRestore(selected.id)}
+                    >
+                      Restore
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="secondary-button exercise-remove-button"
+                      onClick={() => void onRemove(selected)}
+                    >
+                      <Trash2 size={15} />
+                      Remove
+                    </button>
+                  )}
+                  {!selectedIsHidden ? (
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={() => onLog(selected.id)}
+                    >
+                      <Plus size={16} />
+                      Log set
+                    </button>
+                  ) : null}
+                </div>
               </div>
 
               <dl className="detail-stats">
@@ -972,7 +1076,59 @@ function ExercisesPage({
           )}
         </section>
       </div>
+      {removedOpen ? (
+        <RemovedExercisesModal
+          exercises={hiddenExercises}
+          onClose={() => setRemovedOpen(false)}
+          onRestore={onRestore}
+        />
+      ) : null}
     </>
+  );
+}
+
+function RemovedExercisesModal({
+  exercises,
+  onClose,
+  onRestore,
+}: {
+  exercises: Exercise[];
+  onClose: () => void;
+  onRestore: (exerciseId: string) => Promise<void>;
+}) {
+  const [busyId, setBusyId] = useState("");
+
+  async function restore(exerciseId: string) {
+    setBusyId(exerciseId);
+    await onRestore(exerciseId);
+    setBusyId("");
+  }
+
+  return (
+    <ModalFrame
+      title="Removed exercises"
+      subtitle="Restore an exercise whenever you want it back in your library."
+      onClose={onClose}
+    >
+      <div className="removed-exercise-list">
+        {exercises.map((exercise) => (
+          <div className="request-row" key={exercise.id}>
+            <span>
+              <strong>{exercise.name}</strong>
+              <small>{exercise.is_bodyweight ? "Bodyweight" : "Weighted exercise"}</small>
+            </span>
+            <button
+              type="button"
+              className="icon-text-button accept"
+              disabled={Boolean(busyId)}
+              onClick={() => void restore(exercise.id)}
+            >
+              {busyId === exercise.id ? "Restoring..." : "Restore"}
+            </button>
+          </div>
+        ))}
+      </div>
+    </ModalFrame>
   );
 }
 
