@@ -360,6 +360,12 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
             onClick={() => navigate("workouts")}
           />
           <NavButton
+            active={section === "leaderboard"}
+            icon={<Trophy size={18} />}
+            label="Leaderboard"
+            onClick={() => navigate("leaderboard")}
+          />
+          <NavButton
             active={section === "friends"}
             icon={<Users size={18} />}
             label="Friends"
@@ -370,12 +376,6 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
             icon={<UsersRound size={18} />}
             label="Groups"
             onClick={() => navigate("groups")}
-          />
-          <NavButton
-            active={section === "leaderboard"}
-            icon={<Trophy size={18} />}
-            label="Leaderboard"
-            onClick={() => navigate("leaderboard")}
           />
           <NavButton
             active={section === "settings"}
@@ -530,6 +530,12 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
           onClick={() => navigate("workouts")}
         />
         <NavButton
+          active={section === "leaderboard"}
+          icon={<Trophy size={19} />}
+          label="Ranks"
+          onClick={() => navigate("leaderboard")}
+        />
+        <NavButton
           active={section === "friends"}
           icon={<Users size={19} />}
           label="Friends"
@@ -540,12 +546,6 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
           icon={<UsersRound size={19} />}
           label="Groups"
           onClick={() => navigate("groups")}
-        />
-        <NavButton
-          active={section === "leaderboard"}
-          icon={<Trophy size={19} />}
-          label="Ranks"
-          onClick={() => navigate("leaderboard")}
         />
         <NavButton
           active={section === "settings"}
@@ -673,11 +673,9 @@ function Dashboard({
 
   return (
     <>
-      <header className="page-header">
+      <header className="page-header dashboard-header">
         <div>
-          <p className="section-label">Training journal</p>
-          <h1>Your week at a glance</h1>
-          <p>Week begins Monday. Keep the record honest and useful.</p>
+          <h1>Your month at a glance</h1>
         </div>
         <div className="page-actions">
           <button type="button" className="secondary-button" onClick={onLogWeight}>

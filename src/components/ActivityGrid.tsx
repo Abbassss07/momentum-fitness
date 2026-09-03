@@ -40,7 +40,7 @@ export function ActivityGrid({ activity }: ActivityGridProps) {
 
   return (
     <section
-      className="mb-[18px] border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950"
+      className="activity-grid mb-2.5 border border-neutral-200 bg-white p-4 sm:mb-[18px] sm:p-5 dark:border-neutral-800 dark:bg-neutral-950"
       aria-labelledby="activity-grid-title"
     >
       <div className="mb-4 flex items-start justify-between gap-4">

@@ -3435,6 +3435,14 @@ html[data-theme="dark"] .primary-button {
   margin-bottom: 44px;
 }
 
+.dashboard-header {
+  margin-bottom: 24px;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+}
+
 .page-header h1 {
   font-size: clamp(32px, 3.25vw, 46px);
   font-weight: 700;
@@ -3846,8 +3854,35 @@ html[data-theme="dark"] .invite-icon {
 
 @media (max-width: 820px) {
   .content-wrap {
-    padding-top: 36px;
+    padding-top: 20px;
     padding-bottom: 86px;
+  }
+
+  .dashboard-header {
+    margin-bottom: 18px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 30px;
+  }
+
+  .streak-summary {
+    min-height: 86px;
+    margin-bottom: 10px;
+    padding: 15px 18px;
+  }
+
+  .streak-summary h2 {
+    margin-top: 3px;
+    font-size: 16px;
+  }
+
+  .streak-description {
+    font-size: 10px;
+  }
+
+  .streak-value strong {
+    font-size: 30px;
   }
 
   .sidebar {
