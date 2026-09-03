@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { Brand } from "@/components/AuthScreen";
+import { ActivityGrid, type ActivityDay } from "@/components/ActivityGrid";
 import { ProgressChart, RangeSelect } from "@/components/ProgressChart";
 import { FriendsPage } from "@/components/FriendsPage";
 import { GroupsPage } from "@/components/GroupsPage";
@@ -63,6 +64,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [hiddenExerciseIds, setHiddenExerciseIds] = useState<Set<string>>(new Set());
   const [workouts, setWorkouts] = useState<WorkoutLog[]>([]);
+  const [activity, setActivity] = useState<ActivityDay[]>([]);
   const [weights, setWeights] = useState<BodyWeightLog[]>([]);
   const [profileUsername, setProfileUsername] = useState(
     typeof user.user_metadata.username === "string"
@@ -92,7 +94,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [partsResult, exercisesResult, workoutsResult, weightsResult, profileResult, hiddenExercisesResult] =
+    const [partsResult, exercisesResult, workoutsResult, weightsResult, profileResult, hiddenExercisesResult, activityResult] =
       await Promise.all([
         supabase.from("body_parts").select("*").order("sort_order"),
         supabase.from("exercises").select("*").order("name"),
@@ -115,6 +117,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
           .from("hidden_exercises")
           .select("exercise_id")
           .eq("user_id", user.id),
+        supabase.rpc("get_activity_heatmap"),
       ]);
 
     const firstError =
@@ -123,7 +126,8 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
       workoutsResult.error ||
       weightsResult.error ||
       profileResult.error ||
-      hiddenExercisesResult.error;
+      hiddenExercisesResult.error ||
+      activityResult.error;
 
     if (firstError) setNotice(firstError.message);
     setBodyParts((partsResult.data as BodyPart[]) ?? []);
@@ -143,6 +147,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
         weight_kg: Number(item.weight_kg),
       })),
     );
+    setActivity((activityResult.data as ActivityDay[]) ?? []);
     if (profileResult.data?.username) setProfileUsername(profileResult.data.username);
     setProfileDisplayName(profileResult.data?.display_name ?? "");
     setLoading(false);
@@ -441,6 +446,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
             <Dashboard
               weights={weights}
               workouts={workouts}
+              activity={activity}
               exercises={exercises}
               onLogWeight={() => setWeightModal(true)}
               onLogWorkout={openWorkoutPicker}
@@ -631,6 +637,7 @@ function NavButton({
 function Dashboard({
   weights,
   workouts,
+  activity,
   exercises,
   onLogWeight,
   onLogWorkout,
@@ -638,6 +645,7 @@ function Dashboard({
 }: {
   weights: BodyWeightLog[];
   workouts: WorkoutLog[];
+  activity: ActivityDay[];
   exercises: Exercise[];
   onLogWeight: () => void;
   onLogWorkout: () => void;
@@ -696,6 +704,8 @@ function Dashboard({
           <span>{streak.days === 1 ? "day" : "days"}</span>
         </div>
       </section>
+
+      <ActivityGrid activity={activity} />
 
       <div className="dashboard-primary dashboard-primary-solo">
         <section className="journal-section weight-section" aria-labelledby="weight-title">
