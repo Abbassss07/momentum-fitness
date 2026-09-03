@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Check, Moon, Save, Sun } from "lucide-react";
+import { Check, KeyRound, Moon, Save, Sun } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
 
@@ -7,6 +7,7 @@ const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,23}$/;
 
 type ProfileSettingsProps = {
   userId: string;
+  email: string;
   username: string;
   displayName: string;
   theme: "light" | "dark";
@@ -17,6 +18,7 @@ type ProfileSettingsProps = {
 
 export function ProfileSettings({
   userId,
+  email,
   username: savedUsername,
   displayName: savedDisplayName,
   theme,
@@ -29,6 +31,12 @@ export function ProfileSettings({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
 
   const normalizedUsername = username.trim().toLowerCase();
   const normalizedDisplayName = displayName.trim();
@@ -98,6 +106,72 @@ export function ProfileSettings({
       );
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function changePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    if (!email) {
+      setPasswordError("This account does not have an email password to change.");
+      return;
+    }
+
+    if (!currentPassword) {
+      setPasswordError("Enter your current password.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("Your new password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword === currentPassword) {
+      setPasswordError("Choose a password that is different from your current password.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Your new passwords do not match.");
+      return;
+    }
+
+    setPasswordBusy(true);
+
+    try {
+      const verification = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      });
+
+      if (verification.error || verification.data.user?.id !== userId) {
+        setPasswordError("The current password is incorrect.");
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+        current_password: currentPassword,
+      });
+
+      if (updateError) throw updateError;
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordSuccess("Password updated.");
+      onNotice("Password updated");
+    } catch (caught) {
+      setPasswordError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not update your password. Please try again.",
+      );
+    } finally {
+      setPasswordBusy(false);
     }
   }
 
@@ -176,6 +250,73 @@ export function ProfileSettings({
             >
               <Save size={16} aria-hidden="true" />
               {busy ? "Saving..." : "Save changes"}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="journal-section profile-settings security-settings" aria-labelledby="password-title">
+        <div className="section-heading">
+          <div>
+            <p className="section-label">Security</p>
+            <h2 id="password-title">Change password</h2>
+          </div>
+          <KeyRound size={18} aria-hidden="true" />
+        </div>
+        <p className="security-copy">Confirm your current password before choosing a new one.</p>
+        <form
+          className="profile-form password-form"
+          onSubmit={changePassword}
+          onFocusCapture={scrollFocusedFieldIntoView}
+        >
+          <label>
+            Current password
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </label>
+
+          <label>
+            New password
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+            <small className="field-hint">Use at least 8 characters.</small>
+          </label>
+
+          <label>
+            Confirm new password
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </label>
+
+          {passwordError ? <div className="form-error" role="alert">{passwordError}</div> : null}
+          {passwordSuccess ? (
+            <div className="form-success" role="status">
+              <Check size={16} aria-hidden="true" />
+              {passwordSuccess}
+            </div>
+          ) : null}
+
+          <div className="profile-form-actions">
+            <button type="submit" className="primary-button" disabled={passwordBusy}>
+              <KeyRound size={16} aria-hidden="true" />
+              {passwordBusy ? "Updating..." : "Update password"}
             </button>
           </div>
         </form>

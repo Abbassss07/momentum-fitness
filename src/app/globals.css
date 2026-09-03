@@ -3561,6 +3561,22 @@ html[data-theme="dark"] .primary-button {
   margin-top: 18px;
 }
 
+.security-settings {
+  margin-top: 18px;
+}
+
+.security-copy {
+  max-width: 510px;
+  margin: 13px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.password-form {
+  margin-top: 22px;
+}
+
 .appearance-copy {
   max-width: 510px;
   margin: 13px 0 22px;

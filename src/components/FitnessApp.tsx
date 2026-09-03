@@ -474,6 +474,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
           ) : (
             <ProfileSettings
               userId={user.id}
+              email={user.email ?? ""}
               username={profileUsername}
               displayName={profileDisplayName}
               theme={theme}
