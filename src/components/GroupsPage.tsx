@@ -86,7 +86,7 @@ export function GroupsPage({
     try {
       const [nextGroups, nextDirectInvites] = await Promise.all([
         fetchGroups(),
-        fetchOwnGroupDirectInvites(),
+        fetchOwnGroupDirectInvites(userId),
       ]);
       setGroups(nextGroups);
       setDirectInvites(nextDirectInvites);
@@ -98,11 +98,11 @@ export function GroupsPage({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     let ignore = false;
-    Promise.all([fetchGroups(), fetchOwnGroupDirectInvites()])
+    Promise.all([fetchGroups(), fetchOwnGroupDirectInvites(userId)])
       .then(([nextGroups, nextDirectInvites]) => {
         if (ignore) return;
         setGroups(nextGroups);
@@ -118,7 +118,7 @@ export function GroupsPage({
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (!initialInviteCode) return;

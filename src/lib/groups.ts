@@ -199,10 +199,13 @@ export async function fetchGroupDirectInvites(
   }));
 }
 
-export async function fetchOwnGroupDirectInvites(): Promise<OwnGroupDirectInvite[]> {
+export async function fetchOwnGroupDirectInvites(
+  userId: string,
+): Promise<OwnGroupDirectInvite[]> {
   const { data, error } = await supabase
     .from("group_direct_invites")
     .select("id,group_id,group_name,status,created_at")
+    .eq("invited_user_id", userId)
     .eq("status", "pending")
     .order("created_at", { ascending: false });
   if (error) throw error;
