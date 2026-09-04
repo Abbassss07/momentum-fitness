@@ -1743,38 +1743,16 @@ button:disabled {
   max-width: 820px;
 }
 
-.group-invite-section {
-  max-width: 820px;
-  margin-top: 18px;
-  padding: 22px 24px;
-}
-
-.group-invite-section > p {
-  margin: 4px 0 16px;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.group-invite-link {
-  min-width: 0;
+.group-header-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  flex: 0 0 auto;
+  gap: 8px;
 }
 
-.group-invite-link code {
-  min-width: 0;
-  overflow: hidden;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  color: var(--ink);
-  background: var(--surface-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+.group-header-actions .secondary-button {
+  min-height: 36px;
+  padding: 0 11px;
   font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .group-direct-invites {
@@ -3053,10 +3031,9 @@ button:disabled {
 
   .groups-mobile-create { display: inline-flex; }
   .group-detail-header { gap: 16px; }
+  .group-header-actions { gap: 6px; }
+  .group-header-actions .secondary-button { min-height: 36px; padding: 0 10px; }
   .group-code { display: none; }
-  .group-invite-section { padding: 20px; }
-  .group-invite-link { align-items: stretch; flex-direction: column; }
-  .group-invite-link .secondary-button { justify-content: center; }
   .invite-card { min-height: 310px; padding: 28px 20px; }
   .group-danger-zone { align-items: flex-start; flex-direction: column; }
 
@@ -3312,7 +3289,6 @@ select,
 .groups-section,
 .group-code,
 .invite-card,
-.group-invite-section,
 .group-direct-invites,
 .groups-manage-grid,
 .friends-manage-grid,
@@ -3356,7 +3332,6 @@ select,
 .weekly-snapshot,
 .friend-summary,
 .groups-section,
-.group-invite-section,
 .group-direct-invites,
 .groups-manage-grid,
 .friends-manage-grid,
@@ -3609,7 +3584,6 @@ html[data-theme="dark"] .primary-button {
 .invite-icon,
 .friends-icon,
 .leaderboard-page-icon,
-.group-invite-link code,
 .friend-search-form label,
 .friend-summary dl,
 .friend-progress-zero,

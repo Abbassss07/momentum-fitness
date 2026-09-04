@@ -533,23 +533,11 @@ function GroupDetail({
           <h1>{group.name}</h1>
           <p>{members.length || leaderboard?.memberCount || 0} members</p>
         </div>
-        {isOwner ? <button type="button" className="secondary-button" onClick={() => setRenameOpen(true)}><Pencil size={15} />Rename</button> : null}
-      </header>
-
-      <section className="journal-section group-invite-section" aria-labelledby="group-invite-title">
-        <div className="section-heading">
-          <div>
-            <p className="section-label">Invite</p>
-            <h2 id="group-invite-title">Share this group</h2>
-          </div>
-          {isOwner ? <button type="button" className="secondary-button" onClick={() => setDirectInviteOpen(true)}><UserPlus size={15} />Direct invite</button> : null}
-        </div>
-        <p>Anyone with this link can request to join. You can share it with people you trust.</p>
-        <div className="group-invite-link">
-          <code>/join/{group.invite_code}</code>
+        <div className="group-header-actions">
           <button type="button" className="secondary-button" onClick={() => void copyInvite()}><Copy size={15} />Copy link</button>
+          {isOwner ? <button type="button" className="secondary-button" onClick={() => setRenameOpen(true)}><Pencil size={15} />Rename</button> : null}
         </div>
-      </section>
+      </header>
 
       {error ? (
         <div className="leaderboard-empty" role="alert">
@@ -587,7 +575,7 @@ function GroupDetail({
       {isOwner ? (
         <div className="groups-manage-grid">
           <section className="journal-section requests-section" aria-labelledby="group-direct-invites-title">
-            <div className="section-heading"><div><p className="section-label">Owner tools</p><h2 id="group-direct-invites-title">Direct invites</h2></div></div>
+            <div className="section-heading"><div><p className="section-label">Owner tools</p><h2 id="group-direct-invites-title">Direct invites</h2></div><button type="button" className="secondary-button" onClick={() => setDirectInviteOpen(true)}><UserPlus size={15} />Invite friend</button></div>
             {sentDirectInvites.length === 0 ? <p className="friend-empty">No direct invites are waiting.</p> : sentDirectInvites.map((invite) => (
               <div className="request-row" key={invite.id}>
                 <MemberIdentity profile={invite.profile} />
