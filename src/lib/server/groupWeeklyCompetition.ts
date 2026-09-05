@@ -7,12 +7,10 @@ export async function getGroupWeeklyCompetition(
   groupId: string,
   authorization: string,
 ): Promise<GroupWeeklyCompetition> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!supabaseUrl || !publishableKey) {
-    throw new Error("Supabase environment variables are not configured.");
-  }
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ?? "https://bfqdlggxzwdjxjqkdulk.supabase.co";
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    ?? "sb_publishable_obceQdneHSi8Gw9Pgjvxhw_yevgws9d";
 
   const token = authorization.slice("Bearer ".length).trim();
   const client = createClient(supabaseUrl, publishableKey, {
