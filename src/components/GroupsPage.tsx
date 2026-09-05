@@ -1,12 +1,14 @@
 "use client";
 
-import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  BarChart3,
   Check,
   Clipboard,
   Copy,
+  Dumbbell,
   Pencil,
   Plus,
   RefreshCw,
@@ -17,10 +19,17 @@ import {
   Users,
   X,
 } from "lucide-react";
+import {
+  ConsistencyRange,
+  LeaderboardRows,
+  LeaderboardView,
+  rankEntries,
+} from "@/components/LeaderboardPage";
 import { GroupWeeklyCompetition } from "@/components/GroupWeeklyCompetition";
 import {
   createGroup,
   deleteGroup,
+  fetchGroupLeaderboardData,
   fetchGroupDirectInvites,
   fetchGroupMembers,
   fetchGroups,
@@ -41,6 +50,7 @@ import type {
   OwnGroupDirectInvite,
   GroupJoinRequest,
   GroupJoinRequestStatus,
+  GroupLeaderboardData,
   GroupMember,
   GroupProfile,
 } from "@/lib/groups";
@@ -51,6 +61,8 @@ import {
 import { fetchAcceptedFriends } from "@/lib/friends";
 import { initials } from "@/lib/fitness";
 import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
+
+type GroupMetric = Extract<LeaderboardView, "volume" | "consistency">;
 
 export function GroupsPage({
   userId,
@@ -388,9 +400,14 @@ function GroupDetail({
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [requests, setRequests] = useState<GroupJoinRequest[]>([]);
   const [sentDirectInvites, setSentDirectInvites] = useState<GroupDirectInvite[]>([]);
+  const [leaderboard, setLeaderboard] = useState<GroupLeaderboardData | null>(null);
+  const [metric, setMetric] = useState<GroupMetric>("volume");
+  const [range, setRange] = useState<ConsistencyRange>("week");
   const [competition, setCompetition] = useState<GroupWeeklyCompetitionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [competitionLoading, setCompetitionLoading] = useState(true);
+  const [competitionError, setCompetitionError] = useState("");
   const [busyId, setBusyId] = useState("");
   const [renameOpen, setRenameOpen] = useState(false);
   const [directInviteOpen, setDirectInviteOpen] = useState(false);
@@ -398,23 +415,35 @@ function GroupDetail({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [nextMembers, nextRequests, nextDirectInvites, nextCompetition] = await Promise.all([
+      const [nextMembers, nextRequests, nextDirectInvites, nextLeaderboard] = await Promise.all([
         fetchGroupMembers(group.id),
         isOwner ? fetchPendingGroupRequests(group.id) : Promise.resolve([]),
         isOwner ? fetchGroupDirectInvites(group.id) : Promise.resolve([]),
-        fetchGroupWeeklyCompetition(group.id),
+        fetchGroupLeaderboardData(group.id, userId),
       ]);
       setMembers(nextMembers);
       setRequests(nextRequests);
       setSentDirectInvites(nextDirectInvites);
-      setCompetition(nextCompetition);
+      setLeaderboard(nextLeaderboard);
       setError("");
     } catch (caught) {
       setError(messageFrom(caught, "Could not load this group."));
     } finally {
       setLoading(false);
     }
-  }, [group.id, isOwner]);
+  }, [group.id, isOwner, userId]);
+
+  const loadCompetition = useCallback(async () => {
+    setCompetitionLoading(true);
+    try {
+      setCompetition(await fetchGroupWeeklyCompetition(group.id));
+      setCompetitionError("");
+    } catch (caught) {
+      setCompetitionError(messageFrom(caught, "Could not load the weekly competition."));
+    } finally {
+      setCompetitionLoading(false);
+    }
+  }, [group.id]);
 
   useEffect(() => {
     let ignore = false;
@@ -422,14 +451,14 @@ function GroupDetail({
       fetchGroupMembers(group.id),
       isOwner ? fetchPendingGroupRequests(group.id) : Promise.resolve([]),
       isOwner ? fetchGroupDirectInvites(group.id) : Promise.resolve([]),
-      fetchGroupWeeklyCompetition(group.id),
+      fetchGroupLeaderboardData(group.id, userId),
     ])
-      .then(([nextMembers, nextRequests, nextDirectInvites, nextCompetition]) => {
+      .then(([nextMembers, nextRequests, nextDirectInvites, nextLeaderboard]) => {
         if (ignore) return;
         setMembers(nextMembers);
         setRequests(nextRequests);
         setSentDirectInvites(nextDirectInvites);
-        setCompetition(nextCompetition);
+        setLeaderboard(nextLeaderboard);
         setError("");
       })
       .catch((caught) => {
@@ -441,7 +470,33 @@ function GroupDetail({
     return () => {
       ignore = true;
     };
-  }, [group.id, isOwner]);
+  }, [group.id, isOwner, userId]);
+
+  useEffect(() => {
+    let ignore = false;
+    fetchGroupWeeklyCompetition(group.id)
+      .then((nextCompetition) => {
+        if (ignore) return;
+        setCompetition(nextCompetition);
+        setCompetitionError("");
+      })
+      .catch((caught) => {
+        if (!ignore) {
+          setCompetitionError(messageFrom(caught, "Could not load the weekly competition."));
+        }
+      })
+      .finally(() => {
+        if (!ignore) setCompetitionLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [group.id]);
+
+  const rankedRows = useMemo(
+    () => rankEntries(leaderboard?.entries ?? [], metric, range),
+    [leaderboard, metric, range],
+  );
 
   async function respond(request: GroupJoinRequest, status: "approved" | "declined") {
     setBusyId(request.user_id);
@@ -449,6 +504,7 @@ function GroupDetail({
       await respondToGroupJoinRequest(group.id, request.user_id, status);
       onNotice(status === "approved" ? "Member approved" : "Request declined");
       await load();
+      void loadCompetition();
     } catch (caught) {
       onNotice(messageFrom(caught, "Could not update the request."));
     } finally {
@@ -464,6 +520,7 @@ function GroupDetail({
       await removeGroupMember(group.id, member.user_id);
       onNotice("Member removed");
       await load();
+      void loadCompetition();
     } catch (caught) {
       onNotice(messageFrom(caught, "Could not remove the member."));
     } finally {
@@ -493,6 +550,7 @@ function GroupDetail({
     setDirectInviteOpen(false);
     onNotice("Direct group invite sent");
     await load();
+    void loadCompetition();
   }
 
   async function removeGroup() {
@@ -517,7 +575,7 @@ function GroupDetail({
         <div>
           <p className="section-label">{isOwner ? "You own this group" : "Private squad"}</p>
           <h1>{group.name}</h1>
-          <p>{members.length || competition?.memberCount || 0} members</p>
+          <p>{members.length || leaderboard?.memberCount || 0} members</p>
         </div>
         <div className="group-header-actions">
           <button type="button" className="secondary-button" onClick={() => void copyInvite()}><Copy size={15} />Copy link</button>
@@ -532,9 +590,47 @@ function GroupDetail({
         </div>
       ) : null}
 
-      {loading ? <div className="leaderboard-skeleton"><span /><span /><span /></div> : null}
-      {!loading && !error && competition ? (
+      <div className="leaderboard-tabs" role="tablist" aria-label="Group leaderboard metric">
+        <button type="button" role="tab" aria-selected={metric === "volume"} className={metric === "volume" ? "active" : ""} onClick={() => setMetric("volume")}>Volume</button>
+        <button type="button" role="tab" aria-selected={metric === "consistency"} className={metric === "consistency" ? "active" : ""} onClick={() => setMetric("consistency")}>Days</button>
+      </div>
+
+      <section className="journal-section leaderboard-page" aria-labelledby="group-leaderboard-title">
+        <div className="leaderboard-page-heading">
+          <span className="leaderboard-page-icon">{metric === "volume" ? <Dumbbell size={19} /> : <BarChart3 size={19} />}</span>
+          <div>
+            <h2 id="group-leaderboard-title">{metric === "volume" ? "Weekly training volume" : "Training consistency"}</h2>
+            <p>{metric === "volume" ? "One recorded load per exercise per day, Monday through Sunday." : "Distinct calendar days with at least one logged workout."}</p>
+          </div>
+        </div>
+        {metric === "consistency" ? (
+          <div className="consistency-range-toggle" role="group" aria-label="Consistency period">
+            {(["week", "month"] as ConsistencyRange[]).map((item) => (
+              <button type="button" key={item} className={range === item ? "active" : ""} aria-pressed={range === item} onClick={() => setRange(item)}>
+                {item === "week" ? "This week" : "This month"}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {loading ? <div className="leaderboard-skeleton"><span /><span /><span /></div> : null}
+        {!loading && !error ? <LeaderboardRows rows={rankedRows} view={metric} consistencyRange={range} peerLabel="Group member" /> : null}
+      </section>
+
+      {competitionLoading ? (
+        <section className="journal-section" aria-label="Loading weekly competition">
+          <div className="leaderboard-skeleton"><span /><span /><span /></div>
+        </section>
+      ) : competition ? (
         <GroupWeeklyCompetition competition={competition} />
+      ) : competitionError ? (
+        <section className="journal-section">
+          <div className="leaderboard-empty" role="alert">
+            <RefreshCw size={21} />
+            <strong>Weekly competition unavailable</strong>
+            <p>{competitionError}</p>
+            <button type="button" className="secondary-button" onClick={() => void loadCompetition()}>Try again</button>
+          </div>
+        </section>
       ) : null}
 
       {isOwner ? (
