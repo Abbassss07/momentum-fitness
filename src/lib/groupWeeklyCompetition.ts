@@ -56,24 +56,11 @@ export type GroupWeeklyCompetition = {
 export async function fetchGroupWeeklyCompetition(
   groupId: string,
 ): Promise<GroupWeeklyCompetition> {
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError) throw sessionError;
-
-  const accessToken = sessionData.session?.access_token;
-  if (!accessToken) throw new Error("Your session has expired. Please sign in again.");
-
-  const response = await fetch(`/api/groups/${encodeURIComponent(groupId)}/weekly-competition`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    cache: "no-store",
+  const { data, error } = await supabase.rpc("get_group_weekly_competition", {
+    target_group_id: groupId,
+    reference_date: new Date().toISOString().slice(0, 10),
   });
-
-  const payload = (await response.json()) as GroupWeeklyCompetition | { error?: string };
-  if (!response.ok) {
-    throw new Error("error" in payload && payload.error
-      ? payload.error
-      : "Could not load the weekly competition.");
-  }
-
-  return payload as GroupWeeklyCompetition;
+  if (error) throw error;
+  return data as GroupWeeklyCompetition;
 }
 
