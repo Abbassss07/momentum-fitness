@@ -1,14 +1,12 @@
 "use client";
 
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  BarChart3,
   Check,
   Clipboard,
   Copy,
-  Dumbbell,
   Pencil,
   Plus,
   RefreshCw,
@@ -19,16 +17,10 @@ import {
   Users,
   X,
 } from "lucide-react";
-import {
-  ConsistencyRange,
-  LeaderboardRows,
-  LeaderboardView,
-  rankEntries,
-} from "@/components/LeaderboardPage";
+import { GroupWeeklyCompetition } from "@/components/GroupWeeklyCompetition";
 import {
   createGroup,
   deleteGroup,
-  fetchGroupLeaderboardData,
   fetchGroupDirectInvites,
   fetchGroupMembers,
   fetchGroups,
@@ -49,15 +41,16 @@ import type {
   OwnGroupDirectInvite,
   GroupJoinRequest,
   GroupJoinRequestStatus,
-  GroupLeaderboardData,
   GroupMember,
   GroupProfile,
 } from "@/lib/groups";
+import {
+  fetchGroupWeeklyCompetition,
+  type GroupWeeklyCompetition as GroupWeeklyCompetitionData,
+} from "@/lib/groupWeeklyCompetition";
 import { fetchAcceptedFriends } from "@/lib/friends";
 import { initials } from "@/lib/fitness";
 import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
-
-type GroupMetric = Extract<LeaderboardView, "volume" | "consistency">;
 
 export function GroupsPage({
   userId,
@@ -395,9 +388,7 @@ function GroupDetail({
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [requests, setRequests] = useState<GroupJoinRequest[]>([]);
   const [sentDirectInvites, setSentDirectInvites] = useState<GroupDirectInvite[]>([]);
-  const [leaderboard, setLeaderboard] = useState<GroupLeaderboardData | null>(null);
-  const [metric, setMetric] = useState<GroupMetric>("volume");
-  const [range, setRange] = useState<ConsistencyRange>("week");
+  const [competition, setCompetition] = useState<GroupWeeklyCompetitionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
@@ -407,23 +398,23 @@ function GroupDetail({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [nextMembers, nextRequests, nextDirectInvites, nextLeaderboard] = await Promise.all([
+      const [nextMembers, nextRequests, nextDirectInvites, nextCompetition] = await Promise.all([
         fetchGroupMembers(group.id),
         isOwner ? fetchPendingGroupRequests(group.id) : Promise.resolve([]),
         isOwner ? fetchGroupDirectInvites(group.id) : Promise.resolve([]),
-        fetchGroupLeaderboardData(group.id, userId),
+        fetchGroupWeeklyCompetition(group.id),
       ]);
       setMembers(nextMembers);
       setRequests(nextRequests);
       setSentDirectInvites(nextDirectInvites);
-      setLeaderboard(nextLeaderboard);
+      setCompetition(nextCompetition);
       setError("");
     } catch (caught) {
       setError(messageFrom(caught, "Could not load this group."));
     } finally {
       setLoading(false);
     }
-  }, [group.id, isOwner, userId]);
+  }, [group.id, isOwner]);
 
   useEffect(() => {
     let ignore = false;
@@ -431,14 +422,14 @@ function GroupDetail({
       fetchGroupMembers(group.id),
       isOwner ? fetchPendingGroupRequests(group.id) : Promise.resolve([]),
       isOwner ? fetchGroupDirectInvites(group.id) : Promise.resolve([]),
-      fetchGroupLeaderboardData(group.id, userId),
+      fetchGroupWeeklyCompetition(group.id),
     ])
-      .then(([nextMembers, nextRequests, nextDirectInvites, nextLeaderboard]) => {
+      .then(([nextMembers, nextRequests, nextDirectInvites, nextCompetition]) => {
         if (ignore) return;
         setMembers(nextMembers);
         setRequests(nextRequests);
         setSentDirectInvites(nextDirectInvites);
-        setLeaderboard(nextLeaderboard);
+        setCompetition(nextCompetition);
         setError("");
       })
       .catch((caught) => {
@@ -450,12 +441,7 @@ function GroupDetail({
     return () => {
       ignore = true;
     };
-  }, [group.id, isOwner, userId]);
-
-  const rankedRows = useMemo(
-    () => rankEntries(leaderboard?.entries ?? [], metric, range),
-    [leaderboard, metric, range],
-  );
+  }, [group.id, isOwner]);
 
   async function respond(request: GroupJoinRequest, status: "approved" | "declined") {
     setBusyId(request.user_id);
@@ -531,7 +517,7 @@ function GroupDetail({
         <div>
           <p className="section-label">{isOwner ? "You own this group" : "Private squad"}</p>
           <h1>{group.name}</h1>
-          <p>{members.length || leaderboard?.memberCount || 0} members</p>
+          <p>{members.length || competition?.memberCount || 0} members</p>
         </div>
         <div className="group-header-actions">
           <button type="button" className="secondary-button" onClick={() => void copyInvite()}><Copy size={15} />Copy link</button>
@@ -546,31 +532,10 @@ function GroupDetail({
         </div>
       ) : null}
 
-      <div className="leaderboard-tabs" role="tablist" aria-label="Group leaderboard metric">
-        <button type="button" role="tab" aria-selected={metric === "volume"} className={metric === "volume" ? "active" : ""} onClick={() => setMetric("volume")}>Volume</button>
-        <button type="button" role="tab" aria-selected={metric === "consistency"} className={metric === "consistency" ? "active" : ""} onClick={() => setMetric("consistency")}>Days</button>
-      </div>
-
-      <section className="journal-section leaderboard-page" aria-labelledby="group-leaderboard-title">
-        <div className="leaderboard-page-heading">
-          <span className="leaderboard-page-icon">{metric === "volume" ? <Dumbbell size={19} /> : <BarChart3 size={19} />}</span>
-          <div>
-            <h2 id="group-leaderboard-title">{metric === "volume" ? "Weekly training volume" : "Training consistency"}</h2>
-            <p>{metric === "volume" ? "One recorded load per exercise per day, Monday through Sunday." : "Distinct calendar days with at least one logged workout."}</p>
-          </div>
-        </div>
-        {metric === "consistency" ? (
-          <div className="consistency-range-toggle" role="group" aria-label="Consistency period">
-            {(["week", "month"] as ConsistencyRange[]).map((item) => (
-              <button type="button" key={item} className={range === item ? "active" : ""} aria-pressed={range === item} onClick={() => setRange(item)}>
-                {item === "week" ? "This week" : "This month"}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        {loading ? <div className="leaderboard-skeleton"><span /><span /><span /></div> : null}
-        {!loading && !error ? <LeaderboardRows rows={rankedRows} view={metric} consistencyRange={range} peerLabel="Group member" /> : null}
-      </section>
+      {loading ? <div className="leaderboard-skeleton"><span /><span /><span /></div> : null}
+      {!loading && !error && competition ? (
+        <GroupWeeklyCompetition competition={competition} />
+      ) : null}
 
       {isOwner ? (
         <div className="groups-manage-grid">
@@ -892,3 +857,4 @@ function ModalFrame({
 function messageFrom(caught: unknown, fallback: string) {
   return caught instanceof Error ? caught.message : fallback;
 }
+
