@@ -40,6 +40,26 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 The publishable Supabase key is designed for browser use. Database access is protected by Supabase Row Level Security policies.
 
+### Protected email-link sign-in
+
+`POST /api/auth/send-login-email` protects the optional email-link sign-in button before it calls Supabase Auth (and therefore before Supabase sends through the configured Resend SMTP provider). It uses Postgres rather than in-memory state, so limits are shared by every Vercel function instance without a Redis dependency.
+
+- Default IP limit: 5 requests per 10 minutes.
+- Default email limit: 3 requests per hour.
+- Default abuse ban: the 21st request from one IP in an hour creates a 24-hour ban.
+- Requests store the IP and a peppered SHA-256 email hash; the raw address is never logged in the rate-limit tables.
+- A daily `pg_cron` job removes attempt rows after 48 hours, expired bans, and ban events after 90 days.
+
+To enable it, set these server-only Vercel variables for Production, Preview, and Development, then redeploy:
+
+```text
+SUPABASE_SECRET_KEY=sb_secret_...
+LOGIN_RATE_LIMIT_PEPPER=<random 32+ character secret>
+NEXT_PUBLIC_EMAIL_LINK_LOGIN_ENABLED=true
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` works as a compatibility fallback, but `SUPABASE_SECRET_KEY` is preferred. In Supabase Auth > Rate Limits, also enable IP address forwarding and set a sensible `rate_limit_otp` value: Supabase's own email-send and per-user cooldown limits remain the protection for the existing direct password-signup confirmation flow.
+
 ## Seed test history
 
 `scripts/seed-test-history.mjs` is a one-off visual-testing helper. It uses a service-role key and bypasses RLS, so it must only ever target a disposable test account.
@@ -61,4 +81,5 @@ The production app is hosted on Vercel. Connect this repository to a Vercel proj
 - TypeScript
 - Supabase
 - Vercel
+
 

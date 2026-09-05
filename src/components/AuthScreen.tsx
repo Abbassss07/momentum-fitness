@@ -16,8 +16,10 @@ export function AuthScreen({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [emailLinkBusy, setEmailLinkBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const emailLinkEnabled = process.env.NEXT_PUBLIC_EMAIL_LINK_LOGIN_ENABLED === "true";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,6 +77,26 @@ export function AuthScreen({
     setMode(nextMode);
     setError("");
     setMessage("");
+  }
+
+  async function sendEmailLink() {
+    setEmailLinkBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/auth/send-login-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const payload = await response.json() as { message?: string; error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "Unable to process this request.");
+      setMessage(payload.message ?? "Check your email for a sign-in link.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to process this request.");
+    } finally {
+      setEmailLinkBusy(false);
+    }
   }
 
   return (
@@ -190,6 +212,16 @@ export function AuthScreen({
               {busy ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
               <ArrowRight size={17} aria-hidden="true" />
             </button>
+            {mode === "signin" && emailLinkEnabled ? (
+              <button
+                type="button"
+                className="secondary-button auth-submit"
+                disabled={busy || emailLinkBusy}
+                onClick={() => void sendEmailLink()}
+              >
+                {emailLinkBusy ? "Sending sign-in link..." : "Email me a sign-in link"}
+              </button>
+            ) : null}
           </form>
 
           <p className="privacy-note">
