@@ -115,7 +115,7 @@ export function FriendsPage({ user, exercises, onNotice }: { user: User; exercis
   return (
     <>
       <header className="page-header">
-        <div><p className="section-label">Your training circle</p><h1>Friends</h1><p>Connect privately and keep up with each other&apos;s progress.</p></div>
+        <div><p className="section-label">Your training circle</p><h1>Friends</h1><p>Friends can see your workout and body-weight history.</p></div>
       </header>
 
       <div className="friends-manage-grid">
@@ -131,13 +131,13 @@ export function FriendsPage({ user, exercises, onNotice }: { user: User; exercis
           {result ? (
             <div className="friend-result">
               <FriendIdentity profile={result} />
-              {relationship ? <span className="relationship-label">{relationship.friendship.status === "accepted" ? "Friends" : "Request pending"}</span> : <button className="secondary-button" disabled={Boolean(busyId)} onClick={() => act(result.id, () => sendFriendRequest(user.id, result.id, lists.declined), "Friend request sent")}>Send request</button>}
+              {result.id === user.id ? <span className="relationship-label">This is you</span> : relationship ? <span className="relationship-label">{relationship.friendship.status === "accepted" ? "Friends" : "Request pending"}</span> : <button className="secondary-button" disabled={Boolean(busyId)} onClick={() => act(result.id, () => sendFriendRequest(user.id, result.id, lists.declined), "Friend request sent")}>Send request</button>}
             </div>
           ) : searched ? <p className="friend-empty">No Momentum account matches that username.</p> : <p className="friend-hint">Enter their exact Momentum username.</p>}
         </section>
 
-        <section className="journal-section requests-section" aria-labelledby="requests-title">
-          <div className="section-heading"><div><p className="section-label">Pending</p><h2 id="requests-title">Friend requests</h2></div>{lists.incoming.length ? <span className="request-count">{lists.incoming.length}</span> : null}</div>
+        <details className="journal-section requests-section" open={lists.incoming.length > 0} aria-labelledby="requests-title">
+          <summary id="requests-title">Friend requests ({lists.incoming.length + lists.outgoing.length})</summary>
           {loading ? <p className="friend-empty">Checking for requests...</p> : null}
           {!loading && !lists.incoming.length && !lists.outgoing.length ? <p className="friend-empty">No pending requests.</p> : null}
           <div className="request-groups">
@@ -148,7 +148,7 @@ export function FriendsPage({ user, exercises, onNotice }: { user: User; exercis
               <div className="request-row" key={friendship.id}><FriendIdentity profile={profile} /><button className="icon-text-button" disabled={busyId === friendship.id} onClick={() => act(friendship.id, () => removeFriendship(friendship.id), "Friend request cancelled")}><X size={15} /> Cancel</button></div>
             ))}</div> : null}
           </div>
-        </section>
+        </details>
       </div>
 
       <section className="journal-section friends-list-section" aria-labelledby="friends-list-title">
@@ -225,3 +225,4 @@ function FriendProgressView({ selection, progress, loading, error, exercises, bu
     </div>
   );
 }
+

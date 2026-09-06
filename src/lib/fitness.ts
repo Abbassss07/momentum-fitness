@@ -48,12 +48,10 @@ export const RANGE_OPTIONS: RangeKey[] = [
 ];
 
 export function todayIso() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset();
-  return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10);
+  return localDateIso(new Date());
 }
 
-function localDateIso(date: Date) {
+export function localDateIso(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -158,17 +156,19 @@ export function formatVolume(volume: number) {
   return `${new Intl.NumberFormat("en", { maximumFractionDigits: 2 }).format(volume)} kg`;
 }
 
-export function startForRange(range: RangeKey) {
+export function startForRange(range: RangeKey, now = new Date()) {
   if (range === "ALL") return null;
-  const now = new Date();
   const start = new Date(now);
   if (range === "YTD") start.setMonth(0, 1);
-  if (range === "1W") start.setDate(now.getDate() - 7);
-  if (range === "1M") start.setMonth(now.getMonth() - 1);
-  if (range === "3M") start.setMonth(now.getMonth() - 3);
-  if (range === "6M") start.setMonth(now.getMonth() - 6);
-  if (range === "1Y") start.setFullYear(now.getFullYear() - 1);
-  return start.toISOString().slice(0, 10);
+  if (range === "1W") start.setDate(now.getDate() - 6);
+  const months = ({ "1M": 1, "3M": 3, "6M": 6, "1Y": 12 } as Partial<Record<RangeKey, number>>)[range];
+  if (months) {
+    start.setDate(1);
+    start.setMonth(now.getMonth() - months);
+    const lastDay = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+    start.setDate(Math.min(now.getDate(), lastDay));
+  }
+  return localDateIso(start);
 }
 
 export function filterPoints(points: ChartPoint[], range: RangeKey) {

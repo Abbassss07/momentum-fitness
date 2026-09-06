@@ -8,12 +8,7 @@ type ActivityGridProps = {
   activity: ActivityDay[];
 };
 
-const levelClassNames: Record<number, string> = {
-  0: "border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900",
-  1: "border-emerald-800 bg-emerald-950/40",
-  2: "border-emerald-600 bg-emerald-700/60",
-  3: "border-emerald-400 bg-emerald-500",
-};
+const levelClassNames: Record<number, string> = { 0: "activity-level-0", 1: "activity-level-1", 2: "activity-level-2", 3: "activity-level-3" };
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat(undefined, {
@@ -93,3 +88,4 @@ export function ActivityGrid({ activity }: ActivityGridProps) {
     </section>
   );
 }
+

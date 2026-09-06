@@ -6,16 +6,16 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
   Check,
+  ChartNoAxesCombined,
   ChevronRight,
   Dumbbell,
-  Home,
   LogOut,
-  Menu,
   Pencil,
   Plus,
   Scale,
@@ -24,18 +24,13 @@ import {
   Trophy,
   Trash2,
   Users,
-  UsersRound,
   X,
 } from "lucide-react";
-import { Brand } from "@/components/AuthScreen";
+import dynamic from "next/dynamic";
 import { ActivityGrid, type ActivityDay } from "@/components/ActivityGrid";
 import { ProgressChart, RangeSelect } from "@/components/ProgressChart";
-import { FriendsPage } from "@/components/FriendsPage";
 import { GroupsPage } from "@/components/GroupsPage";
-import { LeaderboardPage } from "@/components/LeaderboardPage";
 import { InstallOnboarding, isMobileInstallCandidate } from "@/components/InstallOnboarding";
-import { ProfileSettings } from "@/components/ProfileSettings";
-import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
 import {
   BodyPart,
   BodyWeightLog,
@@ -44,14 +39,43 @@ import {
   Exercise,
   filterPoints,
   formatDate,
-  initials,
   RangeKey,
   todayIso,
+  getCalendarMonthBounds,
+  localDateIso,
   WorkoutLog,
 } from "@/lib/fitness";
+import { readAllPages } from "@/lib/readAllPages";
+import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
 import { supabase } from "@/lib/supabase";
 
-type Section = "dashboard" | "workouts" | "friends" | "groups" | "leaderboard" | "settings";
+const FriendsPage = dynamic(
+  () => import("@/components/FriendsPage").then((module) => module.FriendsPage),
+  { loading: () => <ContentSkeleton /> },
+);
+const LeaderboardPage = dynamic(
+  () =>
+    import("@/components/LeaderboardPage").then(
+      (module) => module.LeaderboardPage,
+    ),
+  { loading: () => <ContentSkeleton /> },
+);
+const ProfileSettings = dynamic(
+  () =>
+    import("@/components/ProfileSettings").then(
+      (module) => module.ProfileSettings,
+    ),
+  { loading: () => <ContentSkeleton /> },
+);
+
+type Section =
+  | "dashboard"
+  | "progress"
+  | "workouts"
+  | "friends"
+  | "groups"
+  | "leaderboard"
+  | "settings";
 type Theme = "light" | "dark";
 
 type FitnessAppProps = {
@@ -65,7 +89,6 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [hiddenExerciseIds, setHiddenExerciseIds] = useState<Set<string>>(new Set());
   const [workouts, setWorkouts] = useState<WorkoutLog[]>([]);
-  const [activity, setActivity] = useState<ActivityDay[]>([]);
   const [weights, setWeights] = useState<BodyWeightLog[]>([]);
   const [profileUsername, setProfileUsername] = useState(
     typeof user.user_metadata.username === "string"
@@ -75,7 +98,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
   const [profileDisplayName, setProfileDisplayName] = useState("");
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
-  const [mobileMenu, setMobileMenu] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [weightModal, setWeightModal] = useState(false);
   const [workoutPicker, setWorkoutPicker] = useState(false);
   const [workoutModal, setWorkoutModal] = useState(false);
@@ -97,20 +120,35 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [partsResult, exercisesResult, workoutsResult, weightsResult, profileResult, hiddenExercisesResult, activityResult] =
-      await Promise.all([
+    setLoadError("");
+    const [
+      partsResult,
+      exercisesResult,
+      workoutsResult,
+      weightsResult,
+      profileResult,
+      hiddenExercisesResult,
+    ] = await Promise.all([
         supabase.from("body_parts").select("*").order("sort_order"),
         supabase.from("exercises").select("*").order("name"),
-        supabase
-          .from("workout_logs")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("logged_at", { ascending: false }),
-        supabase
-          .from("body_weight_logs")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("logged_at", { ascending: true }),
+        readAllPages<WorkoutLog>((from, to) =>
+          supabase
+            .from("workout_logs")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("logged_at", { ascending: false })
+            .order("id")
+            .range(from, to),
+        ),
+        readAllPages<BodyWeightLog>((from, to) =>
+          supabase
+            .from("body_weight_logs")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("logged_at")
+            .order("id")
+            .range(from, to),
+        ),
         supabase
           .from("profiles")
           .select("username,display_name,has_seen_install_prompt,install_prompt_eligible")
@@ -120,7 +158,6 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
           .from("hidden_exercises")
           .select("exercise_id")
           .eq("user_id", user.id),
-        supabase.rpc("get_activity_heatmap"),
       ]);
 
     const firstError =
@@ -129,10 +166,13 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
       workoutsResult.error ||
       weightsResult.error ||
       profileResult.error ||
-      hiddenExercisesResult.error ||
-      activityResult.error;
+      hiddenExercisesResult.error;
 
-    if (firstError) setNotice(firstError.message);
+    if (firstError) {
+      setLoadError(firstError.message);
+      setLoading(false);
+      return;
+    }
     setBodyParts((partsResult.data as BodyPart[]) ?? []);
     setExercises((exercisesResult.data as Exercise[]) ?? []);
     setHiddenExerciseIds(
@@ -150,7 +190,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
         weight_kg: Number(item.weight_kg),
       })),
     );
-    setActivity((activityResult.data as ActivityDay[]) ?? []);
+
     if (profileResult.data?.username) setProfileUsername(profileResult.data.username);
     setProfileDisplayName(profileResult.data?.display_name ?? "");
     setInstallPromptEligible(Boolean(
@@ -213,7 +253,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
 
   function navigate(next: Section) {
     setSection(next);
-    setMobileMenu(false);
+    window.scrollTo({ top: 0 });
   }
 
   function beginWorkout(exerciseId?: string, existing?: WorkoutLog) {
@@ -228,18 +268,23 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
   }
 
   async function saveWeight(date: string, weight: number) {
-    const { error } = await supabase.from("body_weight_logs").upsert(
+    const { data, error } = await supabase.from("body_weight_logs").upsert(
       {
         user_id: user.id,
         logged_at: date,
         weight_kg: weight,
       },
       { onConflict: "user_id,logged_at" },
-    );
+    ).select().single();
 
     if (error) throw error;
+    setWeights((current) =>
+      [
+        ...current.filter((item) => item.logged_at !== date),
+        { ...data, weight_kg: Number(data.weight_kg) },
+      ].toSorted((a, b) => a.logged_at.localeCompare(b.logged_at)),
+    );
     setNotice("Body weight saved");
-    await loadData();
   }
 
   async function saveWorkout(values: {
@@ -264,12 +309,24 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
           .from("workout_logs")
           .update(payload)
           .eq("id", editingWorkout.id)
-      : await supabase.from("workout_logs").insert(payload);
+          .eq("user_id", user.id)
+          .select()
+          .single()
+      : await supabase.from("workout_logs").insert(payload).select().single();
 
     if (result.error) throw result.error;
+    const saved = {
+      ...result.data,
+      weight_kg:
+        result.data.weight_kg === null ? null : Number(result.data.weight_kg),
+    } as WorkoutLog;
+    setWorkouts((current) =>
+      [saved, ...current.filter((item) => item.id !== saved.id)].toSorted(
+        (a, b) => b.logged_at.localeCompare(a.logged_at),
+      ),
+    );
     setNotice(editingWorkout ? "Workout updated" : "Workout logged");
     setEditingWorkout(null);
-    await loadData();
   }
 
   async function addExercise(
@@ -290,7 +347,9 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
 
     if (error) throw error;
     setNotice("Custom exercise added");
-    await loadData();
+    setExercises((current) =>
+      [...current, data].toSorted((a, b) => a.name.localeCompare(b.name)),
+    );
     setSelectedExerciseId(data.id);
   }
 
@@ -341,21 +400,27 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
 
   async function deleteWorkout(id: string) {
     if (!window.confirm("Delete this workout entry?")) return;
-    const { error } = await supabase.from("workout_logs").delete().eq("id", id);
+    const { error } = await supabase
+      .from("workout_logs")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
 
     if (error) {
       setNotice(error.message);
     } else {
       setNotice("Workout removed");
-      await loadData();
+      setWorkouts((current) => current.filter((item) => item.id !== id));
     }
   }
 
   const sectionTitle =
     section === "dashboard"
-      ? "Journal"
-      : section === "workouts"
-        ? "Exercises"
+      ? "Log"
+      : section === "progress"
+        ? "Progress"
+        : section === "workouts"
+          ? "Exercises"
         : section === "friends"
           ? "Friends"
           : section === "groups"
@@ -366,127 +431,47 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
 
   return (
     <main className="app-shell">
-      <aside className={`sidebar ${mobileMenu ? "open" : ""}`}>
-        <div className="sidebar-top">
-          <Brand />
-          <button
-            type="button"
-            className="mobile-close"
-            onClick={() => setMobileMenu(false)}
-            aria-label="Close menu"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <nav aria-label="Primary navigation">
-          <NavButton
-            active={section === "dashboard"}
-            icon={<Home size={18} />}
-            label="Journal"
-            onClick={() => navigate("dashboard")}
-          />
-          <NavButton
-            active={section === "workouts"}
-            icon={<Dumbbell size={18} />}
-            label="Exercises"
-            onClick={() => navigate("workouts")}
-          />
-          <NavButton
-            active={section === "leaderboard"}
-            icon={<Trophy size={18} />}
-            label="Leaderboard"
-            onClick={() => navigate("leaderboard")}
-          />
-          <NavButton
-            active={section === "friends"}
-            icon={<Users size={18} />}
-            label="Friends"
-            onClick={() => navigate("friends")}
-          />
-          <NavButton
-            active={section === "groups"}
-            icon={<UsersRound size={18} />}
-            label="Groups"
-            onClick={() => navigate("groups")}
-          />
-          <NavButton
-            active={section === "settings"}
-            icon={<Settings size={18} />}
-            label="Profile"
-            onClick={() => navigate("settings")}
-          />
-        </nav>
-
-        <div className="sidebar-bottom">
-          <div className="user-card">
-            <div className="avatar">{initials(profileUsername)}</div>
-            <div>
-              <strong>@{profileUsername}</strong>
-              <span>Personal journal</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="logout-button"
-            onClick={() => supabase.auth.signOut()}
-          >
-            <LogOut size={17} />
-            Sign out
-          </button>
-        </div>
-      </aside>
-
-      {mobileMenu ? (
-        <button
-          type="button"
-          className="sidebar-scrim"
-          onClick={() => setMobileMenu(false)}
-          aria-label="Close menu"
-        />
-      ) : null}
-
       <section className="main-panel">
         <header className="topbar">
-          <button
-            type="button"
-            className="menu-button"
-            onClick={() => setMobileMenu(true)}
-            aria-label="Open menu"
-          >
-            <Menu size={21} />
-          </button>
           <div className="topbar-title">
             <span>{sectionTitle}</span>
             <small>Momentum</small>
           </div>
-          {section !== "friends" && section !== "groups" ? (
-            <button
-              type="button"
-              className="primary-button topbar-action"
-              onClick={openWorkoutPicker}
-            >
-              <Plus size={17} />
-              <span>Log workout</span>
-            </button>
-          ) : null}
         </header>
 
-        <div className={section === "dashboard" ? "content-wrap has-mobile-quick-log" : "content-wrap"}>
+        <div className="content-wrap">
           {loading ? (
             <ContentSkeleton />
+          ) : loadError ? (
+            <div className="quiet-empty" role="alert">
+              <strong>Could not load your journal</strong>
+              <p>{loadError}</p>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => void loadData()}
+              >
+                Try again
+              </button>
+            </div>
           ) : section === "dashboard" ? (
+            <LogPage
+              workouts={workouts}
+              exercises={exercises}
+              onLog={openWorkoutPicker}
+              onWeight={() => setWeightModal(true)}
+              onOpen={(id) => {
+                setSelectedExerciseId(id);
+                navigate("workouts");
+              }}
+            />
+          ) : section === "progress" ? (
             <Dashboard
               weights={weights}
               workouts={workouts}
-              activity={activity}
-              exercises={exercises}
+              activity={activityForMonth(workouts)}
               onLogWeight={() => setWeightModal(true)}
-              onLogWorkout={openWorkoutPicker}
-              onOpenExercise={(id) => {
-                setSelectedExerciseId(id);
-                setSection("workouts");
-              }}
+              onExercises={() => navigate("workouts")}
             />
           ) : section === "workouts" ? (
             <ExercisesPage
@@ -511,7 +496,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
           ) : section === "leaderboard" ? (
             <LeaderboardPage userId={user.id} />
           ) : (
-            <ProfileSettings
+            <><ProfileSettings
               userId={user.id}
               email={user.email ?? ""}
               username={profileUsername}
@@ -523,49 +508,28 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
                 setProfileDisplayName(profile.displayName);
               }}
               onNotice={setNotice}
-            />
+            /><div className="profile-secondary-actions"><button type="button" className="text-button" onClick={() => navigate("groups")}>Groups</button><button type="button" className="text-button" onClick={() => void supabase.auth.signOut()}><LogOut size={16} /> Sign out</button></div></>
           )}
         </div>
       </section>
 
-      {section === "dashboard" ? (
-        <div className="mobile-quick-log" role="group" aria-label="Quick logging actions">
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => setWeightModal(true)}
-          >
-            <Scale size={17} />
-            Body weight
-          </button>
-          <button
-            type="button"
-            className="primary-button"
-            onClick={openWorkoutPicker}
-          >
-            <Plus size={17} />
-            Log workout
-          </button>
-        </div>
-      ) : null}
-
-      <nav className="mobile-nav" aria-label="Mobile navigation">
+      <nav className="mobile-nav" aria-label="Primary navigation">
         <NavButton
           active={section === "dashboard"}
-          icon={<Home size={19} />}
-          label="Journal"
+          icon={<Dumbbell size={19} />}
+          label="Log"
           onClick={() => navigate("dashboard")}
         />
         <NavButton
-          active={section === "workouts"}
-          icon={<Dumbbell size={19} />}
-          label="Exercises"
-          onClick={() => navigate("workouts")}
+          active={section === "progress" || section === "workouts"}
+          icon={<ChartNoAxesCombined size={19} />}
+          label="Progress"
+          onClick={() => navigate("progress")}
         />
         <NavButton
           active={section === "leaderboard"}
           icon={<Trophy size={19} />}
-          label="Ranks"
+          label="Leaderboard"
           onClick={() => navigate("leaderboard")}
         />
         <NavButton
@@ -573,12 +537,6 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
           icon={<Users size={19} />}
           label="Friends"
           onClick={() => navigate("friends")}
-        />
-        <NavButton
-          active={section === "groups"}
-          icon={<UsersRound size={19} />}
-          label="Groups"
-          onClick={() => navigate("groups")}
         />
         <NavButton
           active={section === "settings"}
@@ -643,6 +601,51 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
   );
 }
 
+
+function activityForMonth(workouts: WorkoutLog[]): ActivityDay[] {
+  const { start, end } = getCalendarMonthBounds();
+  const byDate = new Map<string, Set<string>>();
+  for (const log of workouts) {
+    if (log.logged_at < start || log.logged_at > end) continue;
+    const exercises = byDate.get(log.logged_at) ?? new Set<string>();
+    exercises.add(log.exercise_id);
+    byDate.set(log.logged_at, exercises);
+  }
+  const days: ActivityDay[] = [];
+  const date = new Date(start + "T12:00:00");
+  while (localDateIso(date) <= end) {
+    const key = localDateIso(date);
+    const count = byDate.get(key)?.size ?? 0;
+    days.push({ activity_date: key, exercise_count: count, activity_level: count === 0 ? 0 : count <= 3 ? 1 : count <= 5 ? 2 : 3 });
+    date.setDate(date.getDate() + 1);
+  }
+  return days;
+}
+
+function LogPage({ workouts, exercises, onLog, onWeight, onOpen }: {
+  workouts: WorkoutLog[]; exercises: Exercise[]; onLog: () => void;
+  onWeight: () => void; onOpen: (id: string) => void;
+}) {
+  const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]));
+  const todayCount = workouts.filter((log) => log.logged_at === todayIso()).length;
+  return <div className="log-page">
+    <header className="page-header"><div>
+      <p className="section-label">{formatDate(todayIso(), true)}</p>
+      <h1>{workouts.length ? "Make time for you." : "Your first workout starts here."}</h1>
+      <p>{todayCount ? `${todayCount} ${todayCount === 1 ? "entry" : "entries"} logged today. Keep it going.` : "Choose an exercise. Add your sets. Done."}</p>
+    </div></header>
+    <button type="button" className="primary-button log-primary" onClick={onLog}><Plus size={20} />{workouts.length ? "Log workout" : "Log your first workout"}</button>
+    <button type="button" className="text-button log-weight" onClick={onWeight}><Scale size={16} /> Log body weight</button>
+    {workouts.length ? <section className="log-recent" aria-labelledby="recent-log-title">
+      <h2 id="recent-log-title">Recent workouts</h2>
+      {workouts.slice(0, 3).map((log) => <button type="button" className="activity-row" key={log.id} onClick={() => onOpen(log.exercise_id)}>
+        <span className="activity-name"><strong>{exerciseById.get(log.exercise_id)?.name ?? "Exercise"}</strong><small>{formatDate(log.logged_at, true)} · {log.sets} × {log.reps}</small></span>
+        <span className="activity-weight">{formatWorkoutLoad(log.weight_kg)}</span><ChevronRight size={16} />
+      </button>)}
+    </section> : <p className="log-first-note">Start with one exercise. You can add the rest as you train.</p>}
+  </div>;
+}
+
 function NavButton({
   active,
   icon,
@@ -674,18 +677,14 @@ function Dashboard({
   weights,
   workouts,
   activity,
-  exercises,
   onLogWeight,
-  onLogWorkout,
-  onOpenExercise,
+  onExercises,
 }: {
   weights: BodyWeightLog[];
   workouts: WorkoutLog[];
   activity: ActivityDay[];
-  exercises: Exercise[];
   onLogWeight: () => void;
-  onLogWorkout: () => void;
-  onOpenExercise: (id: string) => void;
+  onExercises: () => void;
 }) {
   const [range, setRange] = useState<RangeKey>("3M");
   const weightPoints = useMemo(
@@ -701,27 +700,23 @@ function Dashboard({
   const latestWeight = weights.at(-1)?.weight_kg;
   const firstVisibleWeight = visibleWeights[0]?.value;
   const weightChange =
-    latestWeight !== undefined && firstVisibleWeight !== undefined
-      ? latestWeight - firstVisibleWeight
+    visibleWeights.length > 1 && firstVisibleWeight !== undefined
+      ? visibleWeights.at(-1)!.value - firstVisibleWeight
       : null;
   const streak = currentStreak(workouts);
-  const exerciseById = new Map(exercises.map((item) => [item.id, item]));
 
   return (
     <>
       <header className="page-header dashboard-header">
         <div>
-          <h1>Your month at a glance</h1>
+          <h1>Your progress</h1><p>A little work, adding up.</p>
         </div>
         <div className="page-actions">
           <button type="button" className="secondary-button" onClick={onLogWeight}>
             <Scale size={16} />
             Log weight
           </button>
-          <button type="button" className="primary-button" onClick={onLogWorkout}>
-            <Plus size={16} />
-            Log workout
-          </button>
+          <button type="button" className="text-button" onClick={onExercises}>Exercise history <ChevronRight size={16} /></button>
         </div>
       </header>
 
@@ -739,7 +734,7 @@ function Dashboard({
         </div>
       </section>
 
-      <ActivityGrid activity={activity} />
+      <details className="progress-disclosure"><summary>Training calendar</summary><ActivityGrid activity={activity} /></details>
 
       <div className="dashboard-primary dashboard-primary-solo">
         <section className="journal-section weight-section" aria-labelledby="weight-title">
@@ -773,58 +768,7 @@ function Dashboard({
         </section>
       </div>
 
-      <div className="dashboard-secondary dashboard-secondary-solo">
-        <section className="journal-section" aria-labelledby="activity-title">
-          <div className="section-heading">
-            <div>
-              <p className="section-label">Recent activity</p>
-              <h2 id="activity-title">Latest workouts</h2>
-            </div>
-            <button type="button" className="text-button" onClick={onLogWorkout}>
-              Add entry
-            </button>
-          </div>
 
-          <div className="activity-list">
-            {workouts.slice(0, 5).map((log) => {
-              const exercise = exerciseById.get(log.exercise_id);
-              return (
-                <button
-                  type="button"
-                  key={log.id}
-                  className="activity-row"
-                  onClick={() => onOpenExercise(log.exercise_id)}
-                >
-                  <span className="activity-date">
-                    <strong>{new Date(`${log.logged_at}T12:00:00`).getDate()}</strong>
-                    <small>
-                      {new Intl.DateTimeFormat("en", { month: "short" }).format(
-                        new Date(`${log.logged_at}T12:00:00`),
-                      )}
-                    </small>
-                  </span>
-                  <span className="activity-name">
-                    <strong>{exercise?.name ?? "Exercise"}</strong>
-                    <small>{log.sets} sets x {log.reps} reps</small>
-                  </span>
-                  <span className="activity-weight">
-                    {formatWorkoutLoad(log.weight_kg)}
-                  </span>
-                  <ChevronRight size={16} aria-hidden="true" />
-                </button>
-              );
-            })}
-            {!workouts.length ? (
-              <QuietEmpty
-                title="No workouts recorded yet."
-                text="Log a session when you are ready; it will appear here."
-                action="Log a workout"
-                onAction={onLogWorkout}
-              />
-            ) : null}
-          </div>
-        </section>
-      </div>
     </>
   );
 }
@@ -868,6 +812,7 @@ function ExercisesPage({
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<RangeKey>("3M");
   const [removedOpen, setRemovedOpen] = useState(false);
+  const [browserOpen, setBrowserOpen] = useState(!selected);
 
   useEffect(() => {
     if (selected?.body_part_id) {
@@ -948,7 +893,7 @@ function ExercisesPage({
       </header>
 
       <div className="exercise-layout">
-        <section className="exercise-browser" aria-label="Exercise browser">
+        <details className="exercise-browser" open={browserOpen} onToggle={(event) => setBrowserOpen(event.currentTarget.open)}><summary>Change exercise</summary>
           <div className="body-tabs" role="tablist" aria-label="Body parts">
             {bodyParts.map((item) => (
               <button
@@ -993,7 +938,7 @@ function ExercisesPage({
                   key={item.id}
                   className={selectedExerciseId === item.id ? "active" : ""}
                   aria-pressed={selectedExerciseId === item.id}
-                  onClick={() => onSelect(item.id)}
+                  onClick={() => { onSelect(item.id); setBrowserOpen(false); }}
                 >
                   <span>
                     <strong>{item.name}</strong>
@@ -1011,7 +956,7 @@ function ExercisesPage({
               <p className="no-results">No exercises match that search.</p>
             ) : null}
           </div>
-        </section>
+        </details>
 
         <section className="exercise-detail">
           {selected ? (
@@ -1056,12 +1001,12 @@ function ExercisesPage({
               </div>
 
               <dl className="detail-stats">
-                <div><dt>Personal best</dt><dd>{personalBest ? `${personalBest} kg` : "-"}</dd></div>
+                <div><dt>Personal best</dt><dd>{personalBest !== null ? `${personalBest} kg` : "-"}</dd></div>
                 <div><dt>Last session</dt><dd>{last ? formatDate(last.logged_at, true) : "-"}</dd></div>
                 <div><dt>Total entries</dt><dd>{exerciseLogs.length}</dd></div>
               </dl>
 
-              <section className="journal-section exercise-chart-card" aria-labelledby="lift-progress-title">
+              <details className="journal-section exercise-chart-card"><summary>Progress chart</summary>
                 <div className="section-heading">
                   <div>
                     <p className="section-label">Progress</p>
@@ -1076,7 +1021,7 @@ function ExercisesPage({
                   unit={isBodyweightExercise ? "reps" : "kg"}
                   emptyLabel={`Log ${selected.name} to start its progress chart.`}
                 />
-              </section>
+              </details>
 
               <section className="journal-section history-card" aria-labelledby="history-title">
                 <div className="section-heading">
@@ -1177,30 +1122,6 @@ function RemovedExercisesModal({
   );
 }
 
-function QuietEmpty({
-  title,
-  text,
-  action,
-  onAction,
-}: {
-  title: string;
-  text: string;
-  action?: string;
-  onAction?: () => void;
-}) {
-  return (
-    <div className="quiet-empty">
-      <strong>{title}</strong>
-      <p>{text}</p>
-      {action && onAction ? (
-        <button type="button" className="text-button" onClick={onAction}>
-          {action}
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
 function ContentSkeleton() {
   return (
     <div className="skeleton-page" aria-busy="true" aria-label="Loading your journal">
@@ -1222,18 +1143,32 @@ function ModalFrame({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const closeRef = useRef(onClose);
+  useEffect(() => { closeRef.current = onClose; }, [onClose]);
   useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.contains(document.activeElement)) dialog.focus();
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") closeRef.current();
+      if (event.key === "Tab" && dialog) {
+        const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex="0"]')].filter((element) => element.getClientRects().length > 0);
+        const first = focusable[0]; const last = focusable.at(-1);
+        if (!first) { event.preventDefault(); return; }
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog)) { event.preventDefault(); first.focus(); }
+      }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => {
+      previouslyFocused?.focus();
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose]);
+  }, []);
 
   useEffect(() => {
     const rootStyle = document.documentElement.style;
@@ -1270,6 +1205,8 @@ function ModalFrame({
       }}
     >
       <section
+        ref={dialogRef}
+        tabIndex={-1}
         className="modal"
         role="dialog"
         aria-modal="true"
@@ -1378,6 +1315,7 @@ function WorkoutPicker({
   onSelect: (exerciseId: string) => void;
   onBrowse: () => void;
 }) {
+  const [query, setQuery] = useState("");
   const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]));
   const recentExercises: Exercise[] = [];
   const seenExerciseIds = new Set<string>();
@@ -1391,16 +1329,19 @@ function WorkoutPicker({
     if (recentExercises.length === 4) break;
   }
 
+  const options = query.trim() ? exercises.filter((exercise) => exercise.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8) : recentExercises.length ? recentExercises : exercises.slice(0, 6);
+
   return (
     <ModalFrame
       title="Choose exercise"
-      subtitle="Pick a recent movement, or browse your full library."
+      subtitle="Search for the movement you are doing."
       onClose={onClose}
     >
-      {recentExercises.length ? (
+      <label className="picker-search"><span className="sr-only">Search exercises</span><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search exercises" autoComplete="off" /></label>
+      {options.length ? (
         <div className="workout-picker-list" aria-label="Recent exercises">
-          <p className="section-label">Recent exercises</p>
-          {recentExercises.map((exercise) => (
+          <p className="section-label">{query ? "Matching exercises" : recentExercises.length ? "Recent exercises" : "Exercise library"}</p>
+          {options.map((exercise) => (
             <button
               type="button"
               key={exercise.id}
@@ -1417,12 +1358,13 @@ function WorkoutPicker({
           ))}
         </div>
       ) : null}
+      {!options.length ? <p className="friend-empty">No matching exercises. Open the library to add your own.</p> : null}
       <div className="modal-actions standalone">
         <button type="button" className="secondary-button" onClick={onClose}>
           Cancel
         </button>
-        <button type="button" className="primary-button" onClick={onBrowse}>
-          Browse exercises
+        <button type="button" className="text-button" onClick={onBrowse}>
+          Manage exercise library
         </button>
       </div>
     </ModalFrame>
@@ -1560,8 +1502,8 @@ function WorkoutModal({
             />
           </label>
         </div>
-        <label>
-          Notes <span>(optional)</span>
+        <details className="entry-options" open={Boolean(existing?.notes)}><summary>Add notes</summary><label>
+          <span className="sr-only">Notes (optional)</span>
           <textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
@@ -1569,7 +1511,7 @@ function WorkoutModal({
             enterKeyHint="done"
             placeholder="Anything worth remembering?"
           />
-        </label>
+        </label></details>
         {error ? <div className="form-error" role="alert">{error}</div> : null}
         <div className="modal-actions">
           <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>

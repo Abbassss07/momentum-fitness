@@ -37,11 +37,12 @@ export function MomentumHome({ initialInviteCode }: { initialInviteCode?: string
   }
 
   if (!user) return <AuthScreen onAuthenticated={setUser} />;
-  return <FitnessApp user={user} initialInviteCode={initialInviteCode} />;
+  return <FitnessApp key={user.id} user={user} initialInviteCode={initialInviteCode} />;
 }
 
 export default function Home() {
   return <MomentumHome />;
 }
+
 
 

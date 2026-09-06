@@ -27,7 +27,8 @@ export function AuthScreen({
     setError("");
     setMessage("");
 
-    let result;
+    try {
+      let result;
 
     if (mode === "signup") {
       const normalizedUsername = username.trim().toLowerCase();
@@ -52,12 +53,15 @@ export function AuthScreen({
       }
 
       result = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: { data: { username: normalizedUsername } },
       });
     } else {
-      result = await supabase.auth.signInWithPassword({ email, password });
+      result = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
     }
 
     if (result.error) {
@@ -70,7 +74,11 @@ export function AuthScreen({
         setMessage("Check your email to confirm your account, then sign in.");
       }
     }
-    setBusy(false);
+    } catch {
+      setError("Could not connect. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function changeMode(nextMode: "signin" | "signup") {
@@ -114,7 +122,7 @@ export function AuthScreen({
             <div className="auth-proof" aria-label="Momentum features">
               <div><span>Training</span><strong>Sets, reps and load</strong></div>
               <div><span>Progress</span><strong>Clear, useful trends</strong></div>
-              <div><span>Privacy</span><strong>Your records stay yours</strong></div>
+              <div><span>Privacy</span><strong>Only people you accept</strong></div>
             </div>
           </div>
           <p className="auth-intro-foot">Consistency, recorded simply.</p>
@@ -129,7 +137,7 @@ export function AuthScreen({
           <p className="auth-supporting">
             {mode === "signin"
               ? "Continue where you left off."
-              : "Your training records are private to your account."}
+              : "Create an account, then log your first exercise."}
           </p>
 
           <div className="auth-tabs" role="tablist" aria-label="Account access">
@@ -138,6 +146,7 @@ export function AuthScreen({
               role="tab"
               aria-selected={mode === "signin"}
               className={mode === "signin" ? "active" : ""}
+              disabled={busy || emailLinkBusy}
               onClick={() => changeMode("signin")}
             >
               Sign in
@@ -147,6 +156,7 @@ export function AuthScreen({
               role="tab"
               aria-selected={mode === "signup"}
               className={mode === "signup" ? "active" : ""}
+              disabled={busy || emailLinkBusy}
               onClick={() => changeMode("signup")}
             >
               Create account
@@ -208,7 +218,7 @@ export function AuthScreen({
               </div>
             ) : null}
 
-            <button className="primary-button auth-submit" disabled={busy}>
+            <button className="primary-button auth-submit" disabled={busy || emailLinkBusy}>
               {busy ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
               <ArrowRight size={17} aria-hidden="true" />
             </button>

@@ -1,3 +1,4 @@
+import { readAllPages } from "@/lib/readAllPages";
 import { fetchAcceptedFriends } from "@/lib/friends";
 import {
   currentStreak,
@@ -83,18 +84,18 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
       supabase
         .from("profiles")
         .select("id,username,display_name")
-        .in("id", participantIds),
-      supabase
+        .eq("id", userId),
+      readAllPages<WorkoutRecord>((from, to) => supabase
         .from("workout_logs")
         .select("user_id,exercise_id,logged_at,weight_kg")
         .in("user_id", participantIds)
         .gte("logged_at", workoutStart)
-        .lte("logged_at", workoutEnd),
-      supabase
+        .lte("logged_at", workoutEnd).order("id").range(from, to)),
+      readAllPages<Pick<WorkoutRecord, "user_id" | "logged_at">>((from, to) => supabase
         .from("workout_logs")
         .select("user_id,logged_at")
         .in("user_id", participantIds)
-        .lte("logged_at", today),
+        .lte("logged_at", today).order("id").range(from, to)),
     ]);
 
   const firstError =
@@ -104,7 +105,7 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
   if (firstError) throw firstError;
 
   const names = new Map(
-    ((profilesResult.data ?? []) as ProfileRecord[]).map((profile) => [
+    [...((profilesResult.data ?? []) as ProfileRecord[]), ...friends].map((profile) => [
       profile.id,
       profile.display_name?.trim() || profile.username.trim(),
     ]),
@@ -147,4 +148,5 @@ export async function fetchLeaderboardData(userId: string): Promise<LeaderboardD
     }),
   };
 }
+
 

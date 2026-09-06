@@ -1,3 +1,4 @@
+import { readAllPages } from "@/lib/readAllPages";
 import type { BodyWeightLog, WorkoutLog } from "@/lib/fitness";
 import { supabase } from "@/lib/supabase";
 
@@ -40,11 +41,11 @@ export async function findProfileByUsername(username: string) {
 }
 
 export async function fetchFriendshipLists(userId: string): Promise<FriendshipLists> {
-  const { data, error } = await supabase
+  const { data, error } = await readAllPages<Friendship>((from, to) => supabase
     .from("friendships")
     .select("*")
     .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }).order("id").range(from, to));
   if (error) throw error;
 
   const friendships = (data ?? []) as Friendship[];
@@ -124,16 +125,16 @@ export async function removeFriendship(id: string) {
 
 export async function fetchFriendProgress(friendId: string): Promise<FriendProgress> {
   const [workouts, weights] = await Promise.all([
-    supabase
+    readAllPages<WorkoutLog>((from, to) => supabase
       .from("workout_logs")
       .select("*")
       .eq("user_id", friendId)
-      .order("logged_at", { ascending: false }),
-    supabase
+      .order("logged_at", { ascending: false }).order("id").range(from, to)),
+    readAllPages<BodyWeightLog>((from, to) => supabase
       .from("body_weight_logs")
       .select("*")
       .eq("user_id", friendId)
-      .order("logged_at", { ascending: true }),
+      .order("logged_at", { ascending: true }).order("id").range(from, to)),
   ]);
   if (workouts.error) throw workouts.error;
   if (weights.error) throw weights.error;
@@ -149,3 +150,4 @@ export async function fetchFriendProgress(friendId: string): Promise<FriendProgr
     })),
   };
 }
+

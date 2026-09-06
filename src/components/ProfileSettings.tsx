@@ -256,14 +256,8 @@ export function ProfileSettings({
         </form>
       </section>
 
-      <section className="journal-section profile-settings security-settings" aria-labelledby="password-title">
-        <div className="section-heading">
-          <div>
-            <p className="section-label">Security</p>
-            <h2 id="password-title">Change password</h2>
-          </div>
-          <KeyRound size={18} aria-hidden="true" />
-        </div>
+      <details className="journal-section profile-settings security-settings" aria-labelledby="password-title">
+        <summary id="password-title">Change password</summary>
         <p className="security-copy">Confirm your current password before choosing a new one.</p>
         <form
           className="profile-form password-form"
@@ -321,15 +315,10 @@ export function ProfileSettings({
             </button>
           </div>
         </form>
-      </section>
+      </details>
 
-      <section className="journal-section profile-settings appearance-settings" aria-labelledby="appearance-title">
-        <div className="section-heading">
-          <div>
-            <p className="section-label">Appearance</p>
-            <h2 id="appearance-title">Interface theme</h2>
-          </div>
-        </div>
+      <details className="journal-section profile-settings appearance-settings" aria-labelledby="appearance-title">
+        <summary id="appearance-title">Appearance</summary>
         <p className="appearance-copy">
           Choose the working environment that is easiest on your eyes. Your choice is saved on this device.
         </p>
@@ -359,7 +348,7 @@ export function ProfileSettings({
             </span>
           </button>
         </div>
-      </section>
+      </details>
 
       <section className="journal-section profile-settings legal-settings" aria-labelledby="legal-title">
         <div className="section-heading">
@@ -379,3 +368,4 @@ export function ProfileSettings({
     </>
   );
 }
+
