@@ -33,6 +33,7 @@ import { ProgressChart, RangeSelect } from "@/components/ProgressChart";
 import { FriendsPage } from "@/components/FriendsPage";
 import { GroupsPage } from "@/components/GroupsPage";
 import { LeaderboardPage } from "@/components/LeaderboardPage";
+import { InstallOnboarding, isMobileInstallCandidate } from "@/components/InstallOnboarding";
 import { ProfileSettings } from "@/components/ProfileSettings";
 import { scrollFocusedFieldIntoView } from "@/lib/scrollFocusedFieldIntoView";
 import {
@@ -79,6 +80,8 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
   const [workoutPicker, setWorkoutPicker] = useState(false);
   const [workoutModal, setWorkoutModal] = useState(false);
   const [customModal, setCustomModal] = useState(false);
+  const [installPromptEligible, setInstallPromptEligible] = useState(false);
+  const [installOnboardingOpen, setInstallOnboardingOpen] = useState(false);
   const [editingWorkout, setEditingWorkout] = useState<WorkoutLog | null>(null);
   const [selectedExerciseId, setSelectedExerciseId] = useState("");
   const [theme, setTheme] = useState<Theme>(() => {
@@ -110,7 +113,7 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
           .order("logged_at", { ascending: true }),
         supabase
           .from("profiles")
-          .select("username,display_name")
+          .select("username,display_name,has_seen_install_prompt,install_prompt_eligible")
           .eq("id", user.id)
           .single(),
         supabase
@@ -150,6 +153,9 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
     setActivity((activityResult.data as ActivityDay[]) ?? []);
     if (profileResult.data?.username) setProfileUsername(profileResult.data.username);
     setProfileDisplayName(profileResult.data?.display_name ?? "");
+    setInstallPromptEligible(Boolean(
+      profileResult.data?.install_prompt_eligible && !profileResult.data?.has_seen_install_prompt,
+    ));
     setLoading(false);
   }, [user.id]);
 
@@ -158,6 +164,33 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!installPromptEligible) return;
+
+    let cancelled = false;
+    async function claimInstallOnboarding() {
+      // This conditional update lets only one device claim the one-time prompt.
+      const { data } = await supabase
+        .from("profiles")
+        .update({ has_seen_install_prompt: true, install_prompt_eligible: false })
+        .eq("id", user.id)
+        .eq("has_seen_install_prompt", false)
+        .eq("install_prompt_eligible", true)
+        .select("id")
+        .maybeSingle();
+
+      if (data && !cancelled && isMobileInstallCandidate()) {
+        setInstallOnboardingOpen(true);
+      }
+      if (!cancelled) setInstallPromptEligible(false);
+    }
+
+    void claimInstallOnboarding();
+    return () => {
+      cancelled = true;
+    };
+  }, [installPromptEligible, user.id]);
 
   const visibleExercises = useMemo(
     () => exercises.filter((exercise) => !hiddenExerciseIds.has(exercise.id)),
@@ -602,6 +635,9 @@ export function FitnessApp({ user, initialInviteCode }: FitnessAppProps) {
           onClose={() => setCustomModal(false)}
           onSave={addExercise}
         />
+      ) : null}
+      {installOnboardingOpen ? (
+        <InstallOnboarding onClose={() => setInstallOnboardingOpen(false)} />
       ) : null}
     </main>
   );
