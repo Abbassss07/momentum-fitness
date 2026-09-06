@@ -1768,8 +1768,74 @@ button:disabled {
 .groups-manage-grid {
   margin-top: 18px;
   display: grid;
-  grid-template-columns: minmax(0, .9fr) minmax(360px, 1.1fr);
+  grid-template-columns: 1fr;
   gap: 18px;
+}
+
+.group-owner-tools {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.group-owner-tools summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 82px;
+  padding: 16px 18px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.group-owner-tools summary::-webkit-details-marker {
+  display: none;
+}
+
+.group-owner-tools summary strong,
+.group-owner-tools summary small {
+  display: block;
+}
+
+.group-owner-tools summary strong {
+  margin-top: 4px;
+  font-size: 1rem;
+}
+
+.group-owner-tools summary small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+.group-owner-tools-toggle::before {
+  content: "+";
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.group-owner-tools[open] .group-owner-tools-toggle::before {
+  content: "−";
+}
+
+.group-owner-tools-content {
+  display: grid;
+  border-top: 1px solid var(--border);
+}
+
+.group-owner-tools-content > section {
+  padding: 18px;
+}
+
+.group-owner-tools-content > section + section {
+  border-top: 1px solid var(--border);
 }
 
 .groups-manage-grid .friends-list-section {

@@ -634,30 +634,45 @@ function GroupDetail({
       ) : null}
 
       {isOwner ? (
-        <div className="groups-manage-grid">
-          <section className="journal-section requests-section" aria-labelledby="group-direct-invites-title">
-            <div className="section-heading"><div><p className="section-label">Owner tools</p><h2 id="group-direct-invites-title">Direct invites</h2></div><button type="button" className="secondary-button" onClick={() => setDirectInviteOpen(true)}><UserPlus size={15} />Invite friend</button></div>
-            {sentDirectInvites.length === 0 ? <p className="friend-empty">No direct invites are waiting.</p> : sentDirectInvites.map((invite) => (
-              <div className="request-row" key={invite.id}>
-                <MemberIdentity profile={invite.profile} />
-                <span className="relationship-label">Sent</span>
-              </div>
-            ))}
-          </section>
+        <>
+          <details className="group-owner-tools">
+            <summary>
+              <span>
+                <span className="section-label">Owner tools</span>
+                <strong>Invites &amp; requests</strong>
+                <small>
+                  {sentDirectInvites.length} sent · {requests.length} pending
+                </small>
+              </span>
+              <span className="group-owner-tools-toggle" aria-hidden="true" />
+            </summary>
+            <div className="group-owner-tools-content">
+              <section className="requests-section" aria-labelledby="group-direct-invites-title">
+                <div className="section-heading"><div><p className="section-label">Direct invites</p><h2 id="group-direct-invites-title">Sent invitations</h2></div><button type="button" className="secondary-button" onClick={() => setDirectInviteOpen(true)}><UserPlus size={15} />Invite friend</button></div>
+                {sentDirectInvites.length === 0 ? <p className="friend-empty">No direct invites are waiting.</p> : sentDirectInvites.map((invite) => (
+                  <div className="request-row" key={invite.id}>
+                    <MemberIdentity profile={invite.profile} />
+                    <span className="relationship-label">Sent</span>
+                  </div>
+                ))}
+              </section>
 
-          <section className="journal-section requests-section" aria-labelledby="group-requests-title">
-            <div className="section-heading"><div><p className="section-label">Owner tools</p><h2 id="group-requests-title">Join requests</h2></div></div>
-            {requests.length === 0 ? <p className="friend-empty">No pending requests.</p> : requests.map((request) => (
-              <div className="request-row" key={request.user_id}>
-                <MemberIdentity profile={request.profile} />
-                <div className="row-actions">
-                  <button type="button" className="icon-text-button accept" disabled={busyId === request.user_id} onClick={() => void respond(request, "approved")}><Check size={15} />Approve</button>
-                  <button type="button" className="icon-text-button" disabled={busyId === request.user_id} onClick={() => void respond(request, "declined")}><X size={15} />Decline</button>
-                </div>
-              </div>
-            ))}
-          </section>
+              <section className="requests-section" aria-labelledby="group-requests-title">
+                <div className="section-heading"><div><p className="section-label">Join requests</p><h2 id="group-requests-title">Pending approvals</h2></div></div>
+                {requests.length === 0 ? <p className="friend-empty">No pending requests.</p> : requests.map((request) => (
+                  <div className="request-row" key={request.user_id}>
+                    <MemberIdentity profile={request.profile} />
+                    <div className="row-actions">
+                      <button type="button" className="icon-text-button accept" disabled={busyId === request.user_id} onClick={() => void respond(request, "approved")}><Check size={15} />Approve</button>
+                      <button type="button" className="icon-text-button" disabled={busyId === request.user_id} onClick={() => void respond(request, "declined")}><X size={15} />Decline</button>
+                    </div>
+                  </div>
+                ))}
+              </section>
+            </div>
+          </details>
 
+          <div className="groups-manage-grid">
           <section className="journal-section friends-list-section" aria-labelledby="group-members-title">
             <div className="section-heading"><div><p className="section-label">Roster</p><h2 id="group-members-title">Members</h2></div></div>
             {members.map((member) => (
@@ -669,7 +684,8 @@ function GroupDetail({
               </div>
             ))}
           </section>
-        </div>
+          </div>
+        </>
       ) : null}
 
       {isOwner ? (
