@@ -2571,6 +2571,124 @@ button:disabled {
   border-color: var(--border-strong);
 }
 
+.install-onboarding-backdrop {
+  z-index: 140;
+}
+
+.install-onboarding {
+  position: relative;
+  width: min(420px, 100%);
+  padding: 28px;
+}
+
+.install-onboarding-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.install-onboarding-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+
+.install-onboarding .section-label {
+  margin: 20px 0 6px;
+}
+
+.install-onboarding h2 {
+  max-width: 300px;
+  margin: 0;
+  color: var(--ink);
+  font-size: 25px;
+  line-height: 1.14;
+  letter-spacing: -0.04em;
+}
+
+.install-onboarding-intro {
+  margin: 11px 0 20px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.install-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.install-steps li {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.install-steps strong,
+.install-callout strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.install-steps svg {
+  flex: 0 0 auto;
+  color: var(--accent-ink);
+}
+
+.install-step-number {
+  width: 18px;
+  flex: 0 0 18px;
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.install-callout {
+  display: grid;
+  gap: 6px;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.install-native-button {
+  width: 100%;
+  min-height: 48px;
+  margin: 0 0 14px;
+  justify-content: center;
+}
+
+.install-onboarding-later {
+  width: 100%;
+  margin-top: 17px;
+  text-align: center;
+}
+
 .modal-form label > span {
   color: var(--muted);
   font-weight: 450;
@@ -3949,4 +4067,3 @@ html[data-theme="dark"] .invite-icon {
     border-top: 0;
   }
 }
-
